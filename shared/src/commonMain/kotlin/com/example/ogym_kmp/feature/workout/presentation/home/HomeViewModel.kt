@@ -2,23 +2,34 @@ package com.example.ogym_kmp.feature.workout.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.ogym_kmp.core.common.currentDateIso
+import com.example.ogym_kmp.core.common.currentInstant
+import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
 import com.example.ogym_kmp.feature.workout.domain.model.WorkoutSession
 import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutSessions
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutTemplates
+import com.example.ogym_kmp.feature.workout.domain.usecase.StartEmptyWorkout
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class HomeViewModel(
     private val getWorkoutTemplates: GetWorkoutTemplates,
     private val getWorkoutSessions: GetWorkoutSessions,
+    private val startEmptyWorkout: StartEmptyWorkout,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private val _events = Channel<HomeEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     init {
         loadTemplates()
@@ -29,9 +40,25 @@ class HomeViewModel(
         when (action) {
             HomeUiAction.RetryTemplates -> loadTemplates()
             HomeUiAction.RetrySessions -> loadSessions()
-            HomeUiAction.StartEmptyWorkout,
+            HomeUiAction.StartEmptyWorkout -> startEmptyWorkout()
             is HomeUiAction.SelectTemplate,
             is HomeUiAction.SelectSession -> Unit
+        }
+    }
+
+    fun refreshSessions() {
+        loadSessions()
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    private fun startEmptyWorkout() {
+        viewModelScope.launch {
+            val draft = startEmptyWorkout(
+                id = Uuid.random(),
+                startedAt = currentInstant(),
+                localDate = currentDateIso(),
+            )
+            _events.send(HomeEvent.WorkoutStarted(draft))
         }
     }
 
@@ -67,6 +94,10 @@ class HomeViewModel(
             }
         }
     }
+}
+
+sealed interface HomeEvent {
+    data class WorkoutStarted(val draft: ActiveWorkoutDraft) : HomeEvent
 }
 
 private fun WorkoutTemplate.toUi() = WorkoutTemplateItemUi(

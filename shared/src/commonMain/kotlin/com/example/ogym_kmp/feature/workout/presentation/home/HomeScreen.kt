@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -32,9 +33,17 @@ import com.example.ogym_kmp.core.common.currentDateLabel
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
+    onWorkoutStarted: (com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is HomeEvent.WorkoutStarted -> onWorkoutStarted(event.draft)
+            }
+        }
+    }
     HomeContent(state = state, onAction = viewModel::onAction, modifier = modifier)
 }
 
