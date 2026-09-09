@@ -11,6 +11,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import com.example.ogym_kmp.feature.workout.data.remote.dto.CreateWorkoutSessionRequestDto
+import com.example.ogym_kmp.feature.workout.data.remote.dto.CreateWorkoutTemplateRequestDto
 
 class WorkoutApi(
     private val httpClient: HttpClient
@@ -35,6 +36,12 @@ class WorkoutApi(
             setBody(request)
         }
         .body()
+
+    suspend fun createWorkoutTemplate(request: CreateWorkoutTemplateRequestDto): WorkoutTemplateResponseDto =
+        httpClient.post("/workout-templates") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
 
     suspend fun getActiveWorkout(): ActiveWorkoutDraft {
         return httpClient

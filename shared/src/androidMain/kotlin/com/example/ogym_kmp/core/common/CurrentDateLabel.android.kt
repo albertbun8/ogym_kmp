@@ -3,7 +3,6 @@ package com.example.ogym_kmp.core.common
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.time.Instant
 
 actual fun currentDateLabel(): String {
     val formatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.ENGLISH)
@@ -11,5 +10,3 @@ actual fun currentDateLabel(): String {
 }
 
 actual fun currentDateIso(): String = LocalDate.now().toString()
-
-actual fun currentInstant(): Instant = Instant.fromEpochMilliseconds(System.currentTimeMillis())

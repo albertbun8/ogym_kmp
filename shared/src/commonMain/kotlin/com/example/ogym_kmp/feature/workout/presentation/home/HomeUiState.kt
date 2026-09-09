@@ -24,17 +24,28 @@ data class WorkoutSessionItemUi(
     val durationLabel: String?,
     val exerciseCount: Int,
     val completedSetCount: Int,
+    val dateLabel: String,
+    val exercises: List<WorkoutHistoryExerciseUi>,
+)
+
+data class WorkoutHistoryExerciseUi(
+    val name: String,
+    val setCount: Int,
+    val repsLabel: String,
 )
 
 data class HomeUiState(
     val templates: Loadable<List<WorkoutTemplateItemUi>> = Loadable.Loading,
     val sessions: Loadable<List<WorkoutSessionItemUi>> = Loadable.Loading,
+    val workoutStartError: String? = null,
+    val expandedSessionId: Uuid? = null,
 )
 
 sealed interface HomeUiAction {
     data object RetryTemplates : HomeUiAction
     data object RetrySessions : HomeUiAction
     data object StartEmptyWorkout : HomeUiAction
+    data object CreateTemplate : HomeUiAction
     data class SelectTemplate(val id: Uuid) : HomeUiAction
     data class SelectSession(val id: Uuid) : HomeUiAction
 }

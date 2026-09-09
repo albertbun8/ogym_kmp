@@ -114,8 +114,10 @@ class InMemoryWorkoutSessionRepository : WorkoutSessionRepository {
 
     override fun findAll(): List<WorkoutSession> = workoutSessions
 
+    override fun findById(id: UUID): WorkoutSession? = workoutSessions.firstOrNull { it.id == id }
+
     override fun save(workoutSession: WorkoutSession): WorkoutSession {
-        workoutSessions += workoutSession
+        if (findById(workoutSession.id) == null) workoutSessions += workoutSession
         return workoutSession
     }
 }

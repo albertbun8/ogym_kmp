@@ -1,7 +1,10 @@
 package com.example.ogym_kmp.feature.workout.domain.repository
 
 import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
+import com.example.ogym_kmp.feature.workout.domain.model.CreateWorkoutTemplateInput
+import kotlin.time.Instant
 
 interface WorkoutTemplateRepository {
     suspend fun getWorkoutTemplates(): List<WorkoutTemplate>
+    suspend fun createWorkoutTemplate(input: CreateWorkoutTemplateInput, createdAt: Instant): WorkoutTemplate
 }

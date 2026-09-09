@@ -18,6 +18,7 @@ class WorkoutSessionService(
     }
 
     fun create(request: CreateWorkoutSessionRequest): WorkoutSession {
+        workoutSessionsRepository.findById(request.clientGeneratedId)?.let { return it }
         require(request.name.isNotBlank()) { "Workout name must not be blank." }
         require(request.exercises.isNotEmpty()) { "A completed workout must contain an exercise." }
         require(!request.completedAt.isBefore(request.startedAt)) {
@@ -25,7 +26,7 @@ class WorkoutSessionService(
         }
 
         val workoutSession = WorkoutSession(
-            id = UUID.randomUUID(),
+            id = request.clientGeneratedId,
             ownerId = null,
             name = request.name.trim(),
             sourceTemplateId = request.sourceTemplateId,

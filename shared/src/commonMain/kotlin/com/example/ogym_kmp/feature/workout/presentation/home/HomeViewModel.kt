@@ -10,6 +10,8 @@ import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutSessions
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutTemplates
 import com.example.ogym_kmp.feature.workout.domain.usecase.StartEmptyWorkout
+import com.example.ogym_kmp.feature.workout.domain.usecase.StartWorkoutFromTemplate
+import com.example.ogym_kmp.feature.exercise.domain.usecase.GetExercises
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,8 @@ class HomeViewModel(
     private val getWorkoutTemplates: GetWorkoutTemplates,
     private val getWorkoutSessions: GetWorkoutSessions,
     private val startEmptyWorkout: StartEmptyWorkout,
+    private val startWorkoutFromTemplate: StartWorkoutFromTemplate,
+    private val getExercises: GetExercises,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -32,8 +36,21 @@ class HomeViewModel(
     val events = _events.receiveAsFlow()
 
     init {
+        preloadExercises()
         loadTemplates()
         loadSessions()
+    }
+
+    private fun preloadExercises() {
+        viewModelScope.launch {
+            try {
+                getExercises()
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Exception) {
+                // Exercise preloading is best-effort and must not block Home.
+            }
+        }
     }
 
     fun onAction(action: HomeUiAction) {
@@ -41,8 +58,36 @@ class HomeViewModel(
             HomeUiAction.RetryTemplates -> loadTemplates()
             HomeUiAction.RetrySessions -> loadSessions()
             HomeUiAction.StartEmptyWorkout -> startEmptyWorkout()
-            is HomeUiAction.SelectTemplate,
-            is HomeUiAction.SelectSession -> Unit
+            HomeUiAction.CreateTemplate -> viewModelScope.launch { _events.send(HomeEvent.CreateTemplate) }
+            is HomeUiAction.SelectTemplate -> startWorkoutFromTemplate(action.id)
+            is HomeUiAction.SelectSession -> toggleSession(action.id)
+        }
+    }
+
+    private fun toggleSession(sessionId: Uuid) {
+        _uiState.update {
+            it.copy(expandedSessionId = sessionId.takeUnless { id -> id == it.expandedSessionId })
+        }
+    }
+
+    private fun startWorkoutFromTemplate(templateId: Uuid) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(workoutStartError = null) }
+            try {
+                val draft = startWorkoutFromTemplate(
+                    templateId = templateId,
+                    startedAt = currentInstant(),
+                )
+                _events.send(HomeEvent.WorkoutStarted(draft))
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        workoutStartError = exception.message ?: "Unable to start the workout.",
+                    )
+                }
+            }
         }
     }
 
@@ -98,6 +143,7 @@ class HomeViewModel(
 
 sealed interface HomeEvent {
     data class WorkoutStarted(val draft: ActiveWorkoutDraft) : HomeEvent
+    data object CreateTemplate : HomeEvent
 }
 
 private fun WorkoutTemplate.toUi() = WorkoutTemplateItemUi(
@@ -119,7 +165,37 @@ private fun WorkoutSession.toUi(): WorkoutSessionItemUi {
         durationLabel = durationMinutes?.let { "$it min" },
         exerciseCount = exercises.size,
         completedSetCount = exercises.sumOf { exercise -> exercise.sets.count { it.completed } },
+        dateLabel = "${isoDate.substring(5, 7).toMonthName()} ${isoDate.substring(8, 10).trimStart('0')}, ${isoDate.substring(0, 4)}",
+        exercises = exercises.sortedBy { it.positionInWorkout }.map { exercise ->
+            val completedSets = exercise.sets.filter { it.completed }.sortedBy { it.positionInExercise }
+            val repetitions = completedSets.map { it.reps }
+            WorkoutHistoryExerciseUi(
+                name = exercise.exerciseName,
+                setCount = completedSets.size,
+                repsLabel = if (repetitions.distinct().size <= 1) {
+                    repetitions.firstOrNull()?.toString().orEmpty()
+                } else {
+                    repetitions.joinToString("/")
+                },
+            )
+        },
     )
+}
+
+private fun String.toMonthName(): String = when (this) {
+    "01" -> "Jan"
+    "02" -> "Feb"
+    "03" -> "Mar"
+    "04" -> "Apr"
+    "05" -> "May"
+    "06" -> "Jun"
+    "07" -> "Jul"
+    "08" -> "Aug"
+    "09" -> "Sep"
+    "10" -> "Oct"
+    "11" -> "Nov"
+    "12" -> "Dec"
+    else -> ""
 }
 
 private fun String.toMonthLabel(): String = when (this) {

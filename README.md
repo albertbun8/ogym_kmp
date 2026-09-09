@@ -13,13 +13,14 @@ The MVP has two main destinations:
 
 Currently:
 
-- the backend exposes exercises, workout templates, and workout sessions from in-memory repositories;
+- workout templates are persisted in PostgreSQL through Spring Data JDBC;
+- exercises and workout sessions still use in-memory repositories;
 - the frontend has the corresponding data and domain layers;
 - Home loads and displays templates and workout history;
 - active-workout draft models define editable sets, explicit weight units, rest-timer state, muscle targets, and local restoration boundaries;
 - Profile is still a placeholder;
 - starting a workout and viewing workout details are not implemented yet;
-- PostgreSQL, Spring Security, and authentication are planned for a later stage.
+- Spring Security and authentication are planned for the next backend stage.
 
 ## Technology stack
 
@@ -37,8 +38,8 @@ Currently:
 - Kotlin/JVM 21
 - Spring Boot
 - API REST
-- in-memory repositories for the current prototype
-- PostgreSQL and Spring Security planned for a later stage
+- PostgreSQL, Spring Data JDBC, and Flyway for workout templates
+- Spring Security planned for a later stage
 
 ## Architecture
 
@@ -84,6 +85,7 @@ ogym/
 ## Requirements
 
 - JDK 21;
+- Docker with Docker Compose for the local PostgreSQL database;
 - Android Studio with an Android SDK installed;
 - Xcode on macOS to build the iOS application;
 - no global Gradle installation is required because the project uses the Gradle Wrapper.
@@ -99,6 +101,7 @@ java -version
 From the project root:
 
 ```bash
+docker compose up -d postgres
 ./gradlew :backend:bootRun
 ```
 
@@ -106,12 +109,23 @@ The server listens on `http://localhost:8080`. It is bound to `0.0.0.0`, so devi
 
 Stop the server with `Ctrl+C`.
 
+Stop PostgreSQL while preserving its data with:
+
+```bash
+docker compose down
+```
+
+The default local database connection can be overridden with `OGYM_DB_URL`,
+`OGYM_DB_USER`, and `OGYM_DB_PASSWORD`.
+
 ### Available endpoints
 
 ```http
 GET /exercises
 GET /workout-templates
+POST /workout-templates
 GET /workout-sessions
+POST /workout-sessions
 ```
 
 Example:

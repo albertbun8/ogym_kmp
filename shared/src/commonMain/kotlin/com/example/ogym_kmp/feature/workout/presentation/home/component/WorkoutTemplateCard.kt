@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
@@ -29,8 +30,9 @@ fun WorkoutTemplateCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(126.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        modifier = modifier.height(122.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         shape = RoundedCornerShape(18.dp),
     ) {
         Column(
@@ -40,7 +42,7 @@ fun WorkoutTemplateCard(
             Box(
                 modifier = Modifier
                     .size(34.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(11.dp)),
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

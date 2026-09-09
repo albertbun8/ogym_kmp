@@ -16,6 +16,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import com.example.ogym_kmp.core.common.currentDateLabel
 fun HomeScreen(
     viewModel: HomeViewModel,
     onWorkoutStarted: (com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft) -> Unit,
+    onCreateTemplate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -41,6 +43,7 @@ fun HomeScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is HomeEvent.WorkoutStarted -> onWorkoutStarted(event.draft)
+                HomeEvent.CreateTemplate -> onCreateTemplate()
             }
         }
     }
@@ -56,29 +59,44 @@ fun HomeContent(
     val dateLabel = remember { currentDateLabel() }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
-                    text = dateLabel.uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
+                    text = dateLabel,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "Ready to train?",
+                    text = "Overview",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
                 )
             }
         }
 
         item { QuickStartCard { onAction(HomeUiAction.StartEmptyWorkout) } }
 
+        state.workoutStartError?.let { message ->
+            item {
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+
         item {
-            Section(title = "Workout templates") {
+            Section(
+                title = "Quick access",
+                action = {
+                    TextButton(onClick = { onAction(HomeUiAction.CreateTemplate) }) {
+                        Text("New template")
+                    }
+                },
+            ) {
                 when (val templates = state.templates) {
                     Loadable.Loading -> SectionLoading()
                     is Loadable.Error -> SectionError(templates.message) {
@@ -108,7 +126,7 @@ fun HomeContent(
         }
 
         item {
-            Section(title = "Workout history") {
+            Section(title = "Recent activity") {
                 when (val sessions = state.sessions) {
                     Loadable.Loading -> SectionLoading()
                     is Loadable.Error -> SectionError(sessions.message) {
@@ -120,7 +138,10 @@ fun HomeContent(
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 sessions.value.forEach { session ->
-                                    WorkoutHistoryCard(session) {
+                                    WorkoutHistoryCard(
+                                        session = session,
+                                        expanded = state.expandedSessionId == session.id,
+                                    ) {
                                         onAction(HomeUiAction.SelectSession(session.id))
                                     }
                                 }
@@ -134,9 +155,20 @@ fun HomeContent(
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+private fun Section(
+    title: String,
+    action: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            action?.invoke()
+        }
         content()
     }
 }
