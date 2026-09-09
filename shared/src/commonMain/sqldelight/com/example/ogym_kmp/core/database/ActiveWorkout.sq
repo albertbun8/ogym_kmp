@@ -1,0 +1,82 @@
+CREATE TABLE active_workout (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    source_template_id TEXT,
+    started_at_epoch_milliseconds INTEGER NOT NULL,
+    preferred_weight_unit TEXT NOT NULL,
+    rest_duration_seconds INTEGER NOT NULL,
+    rest_timer_ends_at_epoch_milliseconds INTEGER
+);
+
+CREATE TABLE active_workout_exercise (
+    id TEXT NOT NULL PRIMARY KEY,
+    workout_id TEXT NOT NULL REFERENCES active_workout(id) ON DELETE CASCADE,
+    exercise_id TEXT NOT NULL,
+    exercise_name TEXT NOT NULL,
+    position_in_workout INTEGER NOT NULL,
+    muscle_groups TEXT NOT NULL
+);
+
+CREATE TABLE active_workout_set (
+    id TEXT NOT NULL PRIMARY KEY,
+    workout_exercise_id TEXT NOT NULL REFERENCES active_workout_exercise(id) ON DELETE CASCADE,
+    position_in_exercise INTEGER NOT NULL,
+    reps INTEGER,
+    weight REAL,
+    weight_unit TEXT NOT NULL,
+    completed INTEGER NOT NULL
+);
+
+selectActiveWorkout:
+SELECT * FROM active_workout LIMIT 1;
+
+selectActiveWorkoutExercises:
+SELECT * FROM active_workout_exercise
+WHERE workout_id = ?
+ORDER BY position_in_workout;
+
+selectActiveWorkoutSets:
+SELECT * FROM active_workout_set
+WHERE workout_exercise_id = ?
+ORDER BY position_in_exercise;
+
+insertActiveWorkout:
+INSERT INTO active_workout(
+    id,
+    name,
+    source_template_id,
+    started_at_epoch_milliseconds,
+    preferred_weight_unit,
+    rest_duration_seconds,
+    rest_timer_ends_at_epoch_milliseconds
+) VALUES (?, ?, ?, ?, ?, ?, ?);
+
+insertActiveWorkoutExercise:
+INSERT INTO active_workout_exercise(
+    id,
+    workout_id,
+    exercise_id,
+    exercise_name,
+    position_in_workout,
+    muscle_groups
+) VALUES (?, ?, ?, ?, ?, ?);
+
+insertActiveWorkoutSet:
+INSERT INTO active_workout_set(
+    id,
+    workout_exercise_id,
+    position_in_exercise,
+    reps,
+    weight,
+    weight_unit,
+    completed
+) VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteActiveWorkout:
+DELETE FROM active_workout;
+
+deleteAllActiveWorkoutSets:
+DELETE FROM active_workout_set;
+
+deleteAllActiveWorkoutExercises:
+DELETE FROM active_workout_exercise;
