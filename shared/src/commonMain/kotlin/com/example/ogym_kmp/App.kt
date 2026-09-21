@@ -3,7 +3,9 @@ package com.example.ogym_kmp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
@@ -14,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Switch
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
@@ -29,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBar
+import com.example.ogym_kmp.core.designsystem.component.OGymTopBar
 import com.example.ogym_kmp.core.di.AppDependencies
 import com.example.ogym_kmp.feature.workout.presentation.home.HomeScreen
 import com.example.ogym_kmp.feature.workout.presentation.home.HomeViewModel
@@ -58,16 +62,18 @@ fun App(dependencies: AppDependencies) {
     var destination by rememberSaveable { mutableStateOf(MainDestination.Home) }
     var activeWorkout by remember { mutableStateOf<ActiveWorkoutDraft?>(null) }
     var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
+    var darkTheme by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(dependencies) {
         activeWorkout = dependencies.getActiveWorkout()
     }
 
-    OGymTheme {
+    OGymTheme(darkTheme = darkTheme) {
         val workout = activeWorkout
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = { OGymTopBar() },
             bottomBar = {
                 OGymBottomBar(
                     items = MainDestination.entries.map { it.label },
@@ -82,8 +88,11 @@ fun App(dependencies: AppDependencies) {
                 MainContent(
                     destination = destination,
                     homeViewModel = homeViewModel,
+                    activeWorkout = null,
                     onWorkoutStarted = { activeWorkout = it },
                     onCreateTemplate = { templateEditorOpen = true },
+                    darkTheme = darkTheme,
+                    onDarkThemeChanged = { darkTheme = it },
                     modifier = Modifier.padding(innerPadding),
                 )
             } else if (workout != null) {
@@ -132,8 +141,11 @@ fun App(dependencies: AppDependencies) {
                     MainContent(
                         destination = destination,
                         homeViewModel = homeViewModel,
+                        activeWorkout = workout,
                         onWorkoutStarted = { activeWorkout = it },
                         onCreateTemplate = { templateEditorOpen = true },
+                        darkTheme = darkTheme,
+                        onDarkThemeChanged = { darkTheme = it },
                     )
                 }
             } else {
@@ -169,8 +181,11 @@ fun App(dependencies: AppDependencies) {
                     MainContent(
                         destination = destination,
                         homeViewModel = homeViewModel,
+                        activeWorkout = null,
                         onWorkoutStarted = { activeWorkout = it },
                         onCreateTemplate = { templateEditorOpen = true },
+                        darkTheme = darkTheme,
+                        onDarkThemeChanged = { darkTheme = it },
                     )
                 }
             }
@@ -195,28 +210,52 @@ private fun OGymSheetDragHandle() {
 private fun MainContent(
     destination: MainDestination,
     homeViewModel: HomeViewModel,
+    activeWorkout: ActiveWorkoutDraft?,
     onWorkoutStarted: (ActiveWorkoutDraft) -> Unit,
     onCreateTemplate: () -> Unit,
+    darkTheme: Boolean,
+    onDarkThemeChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (destination) {
         MainDestination.Home -> HomeScreen(
             viewModel = homeViewModel,
+            activeWorkout = activeWorkout,
             onWorkoutStarted = onWorkoutStarted,
             onCreateTemplate = onCreateTemplate,
             modifier = modifier,
         )
-        MainDestination.Profile -> ProfilePlaceholder(modifier = modifier)
+        MainDestination.Profile -> ProfilePlaceholder(
+            darkTheme = darkTheme,
+            onDarkThemeChanged = onDarkThemeChanged,
+            modifier = modifier,
+        )
     }
 }
 
 @Composable
-private fun ProfilePlaceholder(modifier: Modifier = Modifier) {
+private fun ProfilePlaceholder(
+    darkTheme: Boolean,
+    onDarkThemeChanged: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         Text("Profile — next UI slice")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Dark mode")
+            Switch(
+                checked = darkTheme,
+                onCheckedChange = onDarkThemeChanged,
+            )
+        }
     }
 }

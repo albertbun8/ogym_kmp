@@ -8,33 +8,37 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ogym_kmp.feature.workout.presentation.home.component.QuickStartCard
+import com.example.ogym_kmp.feature.workout.presentation.home.component.WeeklyActivityCalendar
 import com.example.ogym_kmp.feature.workout.presentation.home.component.WorkoutHistoryCard
 import com.example.ogym_kmp.feature.workout.presentation.home.component.WorkoutTemplateCard
-import com.example.ogym_kmp.core.common.currentDateLabel
+import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
 
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onWorkoutStarted: (com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft) -> Unit,
+    activeWorkout: ActiveWorkoutDraft?,
+    onWorkoutStarted: (ActiveWorkoutDraft) -> Unit,
     onCreateTemplate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -47,28 +51,33 @@ fun HomeScreen(
             }
         }
     }
-    HomeContent(state = state, onAction = viewModel::onAction, modifier = modifier)
+    HomeContent(
+        state = state,
+        activeWorkout = activeWorkout,
+        onAction = viewModel::onAction,
+        modifier = modifier,
+    )
 }
 
 @Composable
 fun HomeContent(
     state: HomeUiState,
+    activeWorkout: ActiveWorkoutDraft? = null,
     onAction: (HomeUiAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dateLabel = remember { currentDateLabel() }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 22.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(
-                    text = dateLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            val completedDates = when (val sessions = state.sessions) {
+                is Loadable.Data -> sessions.value.mapTo(mutableSetOf()) { it.isoDate }
+                else -> emptySet()
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                WeeklyActivityCalendar(completedDates = completedDates)
                 Text(
                     text = "Overview",
                     style = MaterialTheme.typography.headlineMedium,
@@ -76,7 +85,12 @@ fun HomeContent(
             }
         }
 
-        item { QuickStartCard { onAction(HomeUiAction.StartEmptyWorkout) } }
+        item {
+            QuickStartCard(
+                activeWorkout = activeWorkout,
+                onStartClick = { onAction(HomeUiAction.StartEmptyWorkout) },
+            )
+        }
 
         state.workoutStartError?.let { message ->
             item {
@@ -90,10 +104,15 @@ fun HomeContent(
 
         item {
             Section(
-                title = "Quick access",
+                title = "My Templates",
                 action = {
-                    TextButton(onClick = { onAction(HomeUiAction.CreateTemplate) }) {
-                        Text("New template")
+                    FilledIconButton(
+                        onClick = { onAction(HomeUiAction.CreateTemplate) },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .semantics { contentDescription = "Create template" },
+                    ) {
+                        Text("+", style = MaterialTheme.typography.titleLarge)
                     }
                 },
             ) {

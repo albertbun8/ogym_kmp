@@ -159,6 +159,7 @@ private fun WorkoutSession.toUi(): WorkoutSessionItemUi {
     val isoDate = startedAt.toString()
     return WorkoutSessionItemUi(
         id = id,
+        isoDate = isoDate.substring(0, 10),
         name = name,
         dayLabel = isoDate.substring(8, 10),
         monthLabel = isoDate.substring(5, 7).toMonthLabel(),

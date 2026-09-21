@@ -18,6 +18,7 @@ data class WorkoutTemplateItemUi(
 
 data class WorkoutSessionItemUi(
     val id: Uuid,
+    val isoDate: String,
     val name: String,
     val dayLabel: String,
     val monthLabel: String,
