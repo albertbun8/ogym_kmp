@@ -15,7 +15,7 @@ class InMemoryWorkoutSessionRepository : WorkoutSessionRepository {
     private val userId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     private val pushTemplateId = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 
-    private val workoutSessions = listOf(
+    private val workoutSessions = mutableListOf(
         WorkoutSession(
             id = UUID.fromString("10000000-0000-0000-0000-000000000001"),
             ownerId = userId,
@@ -113,4 +113,11 @@ class InMemoryWorkoutSessionRepository : WorkoutSessionRepository {
     )
 
     override fun findAll(): List<WorkoutSession> = workoutSessions
+
+    override fun findById(id: UUID): WorkoutSession? = workoutSessions.firstOrNull { it.id == id }
+
+    override fun save(workoutSession: WorkoutSession): WorkoutSession {
+        if (findById(workoutSession.id) == null) workoutSessions += workoutSession
+        return workoutSession
+    }
 }

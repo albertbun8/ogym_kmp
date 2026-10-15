@@ -1,0 +1,16 @@
+CREATE TABLE cached_exercise (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    muscle_groups TEXT NOT NULL,
+    owner_id TEXT
+);
+
+selectCachedExercises:
+SELECT * FROM cached_exercise ORDER BY name COLLATE NOCASE;
+
+insertCachedExercise:
+INSERT OR REPLACE INTO cached_exercise(id, name, muscle_groups, owner_id)
+VALUES (?, ?, ?, ?);
+
+deleteCachedExercises:
+DELETE FROM cached_exercise;

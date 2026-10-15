@@ -1,6 +1,7 @@
 package com.example.ogym_kmp.core.designsystem.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,9 +37,11 @@ fun OGymBottomBar(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(58.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(20.dp),
             tonalElevation = 0.dp,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Row(
                 modifier = Modifier.padding(6.dp),
@@ -52,8 +55,7 @@ fun OGymBottomBar(
                             .height(46.dp)
                             .clip(RoundedCornerShape(15.dp))
                             .background(
-                                if (selected) MaterialTheme.colorScheme.primaryContainer
-                                else MaterialTheme.colorScheme.surfaceContainer
+                                MaterialTheme.colorScheme.surface
                             )
                             .clickable { onItemSelected(item) },
                         contentAlignment = Alignment.Center,
@@ -61,7 +63,7 @@ fun OGymBottomBar(
                         Text(
                             text = item,
                             style = MaterialTheme.typography.labelLarge,
-                            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                            color = if (selected) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                         )

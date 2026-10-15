@@ -1,0 +1,59 @@
+CREATE TABLE cached_exercise (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    muscle_groups TEXT NOT NULL,
+    owner_id TEXT
+);
+
+CREATE TABLE cached_workout_template (
+    id TEXT NOT NULL PRIMARY KEY,
+    owner_id TEXT,
+    name TEXT NOT NULL,
+    created_at_epoch_milliseconds INTEGER NOT NULL,
+    updated_at_epoch_milliseconds INTEGER NOT NULL
+);
+
+CREATE TABLE cached_template_exercise (
+    id TEXT NOT NULL PRIMARY KEY,
+    template_id TEXT NOT NULL,
+    exercise_id TEXT NOT NULL,
+    position_in_template INTEGER NOT NULL
+);
+
+CREATE TABLE cached_template_set (
+    id TEXT NOT NULL PRIMARY KEY,
+    template_exercise_id TEXT NOT NULL,
+    position_in_exercise INTEGER NOT NULL,
+    target_reps INTEGER NOT NULL,
+    target_weight REAL NOT NULL,
+    target_weight_unit TEXT NOT NULL
+);
+
+CREATE TABLE cached_workout_session (
+    id TEXT NOT NULL PRIMARY KEY,
+    owner_id TEXT,
+    name TEXT NOT NULL,
+    source_template_id TEXT,
+    started_at_epoch_milliseconds INTEGER NOT NULL,
+    completed_at_epoch_milliseconds INTEGER,
+    created_at_epoch_milliseconds INTEGER NOT NULL,
+    sync_status TEXT NOT NULL
+);
+
+CREATE TABLE cached_workout_exercise (
+    id TEXT NOT NULL PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    exercise_id TEXT,
+    exercise_name TEXT NOT NULL,
+    position_in_workout INTEGER NOT NULL
+);
+
+CREATE TABLE cached_workout_set (
+    id TEXT NOT NULL PRIMARY KEY,
+    workout_exercise_id TEXT NOT NULL,
+    position_in_exercise INTEGER NOT NULL,
+    reps INTEGER NOT NULL,
+    weight REAL NOT NULL,
+    weight_unit TEXT NOT NULL,
+    completed INTEGER NOT NULL
+);

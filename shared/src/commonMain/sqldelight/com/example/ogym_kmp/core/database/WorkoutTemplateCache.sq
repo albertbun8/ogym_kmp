@@ -1,0 +1,77 @@
+CREATE TABLE cached_workout_template (
+    id TEXT NOT NULL PRIMARY KEY,
+    owner_id TEXT,
+    name TEXT NOT NULL,
+    created_at_epoch_milliseconds INTEGER NOT NULL,
+    updated_at_epoch_milliseconds INTEGER NOT NULL,
+    sync_status TEXT NOT NULL
+);
+
+CREATE TABLE cached_template_exercise (
+    id TEXT NOT NULL PRIMARY KEY,
+    template_id TEXT NOT NULL,
+    exercise_id TEXT NOT NULL,
+    position_in_template INTEGER NOT NULL
+);
+
+CREATE TABLE cached_template_set (
+    id TEXT NOT NULL PRIMARY KEY,
+    template_exercise_id TEXT NOT NULL,
+    position_in_exercise INTEGER NOT NULL,
+    target_reps INTEGER NOT NULL,
+    target_weight REAL NOT NULL,
+    target_weight_unit TEXT NOT NULL
+);
+
+selectCachedWorkoutTemplates:
+SELECT * FROM cached_workout_template ORDER BY name COLLATE NOCASE;
+
+selectPendingWorkoutTemplates:
+SELECT * FROM cached_workout_template
+WHERE sync_status IN ('PENDING_SYNC', 'PENDING_UPDATE');
+
+selectCachedTemplateExercises:
+SELECT * FROM cached_template_exercise
+WHERE template_id = ? ORDER BY position_in_template;
+
+selectCachedTemplateSets:
+SELECT * FROM cached_template_set
+WHERE template_exercise_id = ? ORDER BY position_in_exercise;
+
+insertCachedWorkoutTemplate:
+INSERT OR REPLACE INTO cached_workout_template
+VALUES (?, ?, ?, ?, ?, ?);
+
+insertCachedTemplateExercise:
+INSERT OR REPLACE INTO cached_template_exercise
+VALUES (?, ?, ?, ?);
+
+insertCachedTemplateSet:
+INSERT OR REPLACE INTO cached_template_set
+VALUES (?, ?, ?, ?, ?, ?);
+
+deleteSyncedTemplateSets:
+DELETE FROM cached_template_set WHERE template_exercise_id IN (
+    SELECT id FROM cached_template_exercise WHERE template_id IN (
+        SELECT id FROM cached_workout_template WHERE sync_status = 'SYNCED'
+    )
+);
+
+deleteSyncedTemplateExercises:
+DELETE FROM cached_template_exercise WHERE template_id IN (
+    SELECT id FROM cached_workout_template WHERE sync_status = 'SYNCED'
+);
+
+deleteSyncedWorkoutTemplates:
+DELETE FROM cached_workout_template WHERE sync_status = 'SYNCED';
+
+deleteTemplateSetsForTemplate:
+DELETE FROM cached_template_set WHERE template_exercise_id IN (
+    SELECT id FROM cached_template_exercise WHERE template_id = ?
+);
+
+deleteTemplateExercisesForTemplate:
+DELETE FROM cached_template_exercise WHERE template_id = ?;
+
+deleteCachedWorkoutTemplate:
+DELETE FROM cached_workout_template WHERE id = ?;

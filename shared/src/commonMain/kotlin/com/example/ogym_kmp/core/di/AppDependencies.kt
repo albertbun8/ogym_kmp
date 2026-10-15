@@ -1,31 +1,27 @@
 package com.example.ogym_kmp.core.di
 
 import com.example.ogym_kmp.core.network.createHttpClient
-import com.example.ogym_kmp.feature.exercise.data.remote.ExerciseApi
-import com.example.ogym_kmp.feature.exercise.data.repository.ExerciseRepositoryImpl
-import com.example.ogym_kmp.feature.exercise.domain.repository.ExerciseRepository
-import com.example.ogym_kmp.feature.exercise.domain.usecase.GetExercises
-import com.example.ogym_kmp.feature.workout.data.remote.WorkoutApi
-import com.example.ogym_kmp.feature.workout.data.repository.WorkoutSessionRepositoryImpl
-import com.example.ogym_kmp.feature.workout.data.repository.WorkoutTemplateRepositoryImpl
-import com.example.ogym_kmp.feature.workout.domain.repository.WorkoutSessionRepository
-import com.example.ogym_kmp.feature.workout.domain.repository.WorkoutTemplateRepository
-import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutSessions
-import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutTemplates
+import com.example.ogym_kmp.core.database.DatabaseDriverFactory
+import com.example.ogym_kmp.core.database.OGymDatabase
+import com.example.ogym_kmp.feature.exercise.di.ExerciseDependencies
+import com.example.ogym_kmp.feature.workout.di.WorkoutDependencies
 
 class AppDependencies(
-    baseUrl: String
+    baseUrl: String,
+    databaseDriverFactory: DatabaseDriverFactory,
 ) {
     private val httpClient = createHttpClient(baseUrl)
+    private val database = OGymDatabase(databaseDriverFactory.createDriver())
 
-    private val exerciseApi = ExerciseApi(httpClient)
-    private val exerciseRepository: ExerciseRepository = ExerciseRepositoryImpl(exerciseApi)
-    val getExercises = GetExercises(exerciseRepository)
+    val exercise = ExerciseDependencies(
+        httpClient = httpClient,
+        database = database
+    )
 
-    private val workoutApi = WorkoutApi(httpClient)
-    private val workoutTemplateRepository: WorkoutTemplateRepository = WorkoutTemplateRepositoryImpl(workoutApi)
-    private val workoutSessionRepository: WorkoutSessionRepository = WorkoutSessionRepositoryImpl(workoutApi)
-
-    val getWorkoutTemplates = GetWorkoutTemplates(workoutTemplateRepository)
-    val getWorkoutSessions = GetWorkoutSessions(workoutSessionRepository)
+    val workout = WorkoutDependencies(
+        httpClient = httpClient,
+        database = database,
+        exerciseRepository = exercise.exerciseRepository,
+        getExercises = exercise.getExercises,
+    )
 }

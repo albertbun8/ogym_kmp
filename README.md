@@ -1,25 +1,60 @@
 # OGym
 
-OGym is a learning project for practicing the end-to-end development of a workout-tracking mobile application: architecture, Kotlin Multiplatform, Compose Multiplatform, HTTP communication, and a Spring Boot backend.
+OGym is a learning project for practicing the end-to-end development of a mobile workout platform: architecture, Kotlin Multiplatform, Compose Multiplatform, HTTP communication, and a Spring Boot backend.
 
 The priority is to understand and evolve each layer progressively, not to deliver the application as quickly as possible.
 
+The current foundation focuses on reliable personal workout tracking. The longer-term product direction is to help members of the same gym voluntarily plan workouts and find compatible training partners without exposing automatic location data. That community direction remains subject to product validation and is not part of the current implementation scope.
+
 ## Current status
 
-The MVP has two main destinations:
+The current application shell has two main destinations:
 
-- **Home**: start an empty workout, browse templates, and view workout history;
-- **Profile**: user identity, general statistics, a compact calendar, muscle strength profile, and preferences.
+- **Home**: start an empty workout or a workout from a template, create a template, and browse recent workout history;
+- **Profile**: currently a placeholder for the future user profile and preferences.
 
 Currently:
 
-- the backend exposes exercises, workout templates, and workout sessions from in-memory repositories;
-- the frontend has the corresponding data and domain layers;
-- Home loads and displays templates and workout history;
-- active-workout draft models define editable sets, explicit weight units, rest-timer state, muscle targets, and local restoration boundaries;
+- workout templates are persisted in PostgreSQL through Spring Data JDBC;
+- exercises and workout sessions still use in-memory repositories;
+- the shared KMP module contains presentation, domain, data, networking, and SQLDelight persistence code;
+- Home loads templates and workout history and can create a workout template;
+- a workout can be started empty or from a template;
+- the active workout supports adding and reordering exercises, editing sets, completing sets, a rest timer, previous performance, and workout completion;
+- the active-workout draft is persisted locally with SQLDelight and restored after an application restart;
+- completed workouts are sent to the backend and then displayed in workout history;
 - Profile is still a placeholder;
-- starting a workout and viewing workout details are not implemented yet;
-- PostgreSQL, Spring Security, and authentication are planned for a later stage.
+- workout sessions are not yet persisted in PostgreSQL;
+- exercise creation, editing, and deletion are not yet exposed by the mobile UI;
+- Spring Security, authentication, and user-owned resources are not yet implemented;
+- automated tests currently cover selected active-workout domain and repository behavior and PostgreSQL workout-template persistence.
+
+## Current priorities
+
+Before implementing the local gym community capabilities, the project should complete and stabilize the personal workout foundation:
+
+1. persist workout sessions in PostgreSQL;
+2. complete workout history and workout details;
+3. implement authentication and assign resources to the authenticated user;
+4. introduce a minimal profile with privacy and discovery preferences;
+5. expand tests around the complete workout lifecycle and backend authorization;
+6. validate the local coordination flow with a small group from one gym before finalizing its domain model.
+
+The first candidate community slice is deliberately small:
+
+```text
+Select a gym
+    ↓
+Plan a visit with a time window and visibility
+    ↓
+Publish a structured partner request
+    ↓
+Receive and accept or decline a response
+    ↓
+Expire the visit and request automatically
+```
+
+Temporary chat, shared workouts, community programs, feeds, and real-time presence are later capabilities rather than prerequisites for this first experiment.
 
 ## Technology stack
 
@@ -37,8 +72,8 @@ Currently:
 - Kotlin/JVM 21
 - Spring Boot
 - API REST
-- in-memory repositories for the current prototype
-- PostgreSQL and Spring Security planned for a later stage
+- PostgreSQL, Spring Data JDBC, and Flyway for workout templates
+- Spring Security planned for a later stage
 
 ## Architecture
 
@@ -84,6 +119,7 @@ ogym/
 ## Requirements
 
 - JDK 21;
+- Docker with Docker Compose for the local PostgreSQL database;
 - Android Studio with an Android SDK installed;
 - Xcode on macOS to build the iOS application;
 - no global Gradle installation is required because the project uses the Gradle Wrapper.
@@ -99,6 +135,7 @@ java -version
 From the project root:
 
 ```bash
+docker compose up -d postgres
 ./gradlew :backend:bootRun
 ```
 
@@ -106,12 +143,23 @@ The server listens on `http://localhost:8080`. It is bound to `0.0.0.0`, so devi
 
 Stop the server with `Ctrl+C`.
 
+Stop PostgreSQL while preserving its data with:
+
+```bash
+docker compose down
+```
+
+The default local database connection can be overridden with `OGYM_DB_URL`,
+`OGYM_DB_USER`, and `OGYM_DB_PASSWORD`.
+
 ### Available endpoints
 
 ```http
 GET /exercises
 GET /workout-templates
+POST /workout-templates
 GET /workout-sessions
+POST /workout-sessions
 ```
 
 Example:
