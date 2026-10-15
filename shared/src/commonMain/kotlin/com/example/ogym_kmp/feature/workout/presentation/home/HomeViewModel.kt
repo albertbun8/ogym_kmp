@@ -11,6 +11,7 @@ import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutSessions
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutTemplates
 import com.example.ogym_kmp.feature.workout.domain.usecase.StartEmptyWorkout
 import com.example.ogym_kmp.feature.workout.domain.usecase.StartWorkoutFromTemplate
+import com.example.ogym_kmp.feature.workout.domain.usecase.DeleteWorkoutTemplate
 import com.example.ogym_kmp.feature.exercise.domain.usecase.GetExercises
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +30,9 @@ class HomeViewModel(
     private val startEmptyWorkout: StartEmptyWorkout,
     private val startWorkoutFromTemplate: StartWorkoutFromTemplate,
     private val getExercises: GetExercises,
+    private val deleteWorkoutTemplate: DeleteWorkoutTemplate,
 ) : ViewModel() {
+    private var loadedTemplates: Map<Uuid, WorkoutTemplate> = emptyMap()
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private val _events = Channel<HomeEvent>(Channel.BUFFERED)
@@ -59,8 +62,29 @@ class HomeViewModel(
             HomeUiAction.RetrySessions -> loadSessions()
             HomeUiAction.StartEmptyWorkout -> startEmptyWorkout()
             HomeUiAction.CreateTemplate -> viewModelScope.launch { _events.send(HomeEvent.CreateTemplate) }
+            is HomeUiAction.EditTemplate -> loadedTemplates[action.id]?.let { template ->
+                viewModelScope.launch { _events.send(HomeEvent.EditTemplate(template)) }
+            }
+            is HomeUiAction.DeleteTemplate -> deleteTemplate(action.id)
             is HomeUiAction.SelectTemplate -> startWorkoutFromTemplate(action.id)
             is HomeUiAction.SelectSession -> toggleSession(action.id)
+        }
+    }
+
+    private fun deleteTemplate(templateId: Uuid) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(templateActionError = null) }
+            try {
+                deleteWorkoutTemplate(templateId)
+                loadedTemplates = loadedTemplates - templateId
+                loadTemplates()
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(templateActionError = exception.message ?: "Unable to delete template.")
+                }
+            }
         }
     }
 
@@ -111,9 +135,9 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(templates = Loadable.Loading) }
             try {
-                _uiState.update {
-                    it.copy(templates = Loadable.Data(getWorkoutTemplates().map(WorkoutTemplate::toUi)))
-                }
+                val templates = getWorkoutTemplates()
+                loadedTemplates = templates.associateBy(WorkoutTemplate::id)
+                _uiState.update { it.copy(templates = Loadable.Data(templates.map(WorkoutTemplate::toUi))) }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -144,6 +168,7 @@ class HomeViewModel(
 sealed interface HomeEvent {
     data class WorkoutStarted(val draft: ActiveWorkoutDraft) : HomeEvent
     data object CreateTemplate : HomeEvent
+    data class EditTemplate(val template: WorkoutTemplate) : HomeEvent
 }
 
 private fun WorkoutTemplate.toUi() = WorkoutTemplateItemUi(

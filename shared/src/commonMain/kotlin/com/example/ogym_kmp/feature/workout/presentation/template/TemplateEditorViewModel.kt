@@ -11,7 +11,9 @@ import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutSetDraft
 import com.example.ogym_kmp.feature.workout.domain.model.CreateTemplateExerciseInput
 import com.example.ogym_kmp.feature.workout.domain.model.CreateTemplateSetInput
 import com.example.ogym_kmp.feature.workout.domain.model.CreateWorkoutTemplateInput
+import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.domain.usecase.CreateWorkoutTemplate
+import com.example.ogym_kmp.feature.workout.domain.usecase.UpdateWorkoutTemplate
 import com.example.ogym_kmp.feature.workout.presentation.active.ExercisePickerState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
@@ -31,6 +33,8 @@ data class TemplateEditorUiState(
     val picker: ExercisePickerState = ExercisePickerState.Idle,
     val saving: Boolean = false,
     val error: String? = null,
+    val isEditing: Boolean = false,
+    val loadingTemplate: Boolean = false,
 )
 
 data class TemplateSetInputUi(val weight: String = "", val reps: String = "")
@@ -53,11 +57,67 @@ sealed interface TemplateEditorAction {
 class TemplateEditorViewModel(
     private val getExercises: GetExercises,
     private val createWorkoutTemplate: CreateWorkoutTemplate,
+    private val updateWorkoutTemplate: UpdateWorkoutTemplate,
+    private val template: WorkoutTemplate? = null,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(TemplateEditorUiState())
+    private val _uiState = MutableStateFlow(
+        TemplateEditorUiState(
+            name = template?.name ?: "New template",
+            isEditing = template != null,
+            loadingTemplate = template != null,
+        ),
+    )
     val uiState = _uiState.asStateFlow()
     private val _events = Channel<TemplateEditorEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    init {
+        if (template != null) loadTemplate(template)
+    }
+
+    private fun loadTemplate(template: WorkoutTemplate) {
+        viewModelScope.launch {
+            try {
+                val exercisesById = getExercises().associateBy(Exercise::id)
+                _uiState.update { state ->
+                    state.copy(
+                        exercises = template.exercises.sortedBy { it.positionInTemplate }.map { exercise ->
+                            ActiveWorkoutExerciseDraft(
+                                id = exercise.id,
+                                exerciseId = exercise.exerciseId,
+                                exerciseName = exercisesById[exercise.exerciseId]?.name ?: "Unknown exercise",
+                                positionInWorkout = exercise.positionInTemplate,
+                                muscleGroups = exercisesById[exercise.exerciseId]?.muscleGroups?.toSet().orEmpty(),
+                                sets = exercise.sets.sortedBy { it.positionInExercise }.map { set ->
+                                    ActiveWorkoutSetDraft(
+                                        id = set.id,
+                                        positionInExercise = set.positionInExercise,
+                                        reps = set.targetReps,
+                                        weight = set.targetWeight,
+                                        weightUnit = set.targetWeightUnit,
+                                        completed = false,
+                                    )
+                                },
+                            )
+                        },
+                        inputs = template.exercises.flatMap { it.sets }.associate { set ->
+                            set.id to TemplateSetInputUi(
+                                weight = set.targetWeight.toString(),
+                                reps = set.targetReps.toString(),
+                            )
+                        },
+                        loadingTemplate = false,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(loadingTemplate = false, error = e.message ?: "Unable to load template.")
+                }
+            }
+        }
+    }
 
     fun onAction(action: TemplateEditorAction) = when (action) {
         is TemplateEditorAction.ChangeName -> _uiState.update { it.copy(name = action.value) }
@@ -179,7 +239,7 @@ class TemplateEditorViewModel(
             _uiState.update { it.copy(saving = true, error = null) }
             try {
                 val input = CreateWorkoutTemplateInput(
-                    Uuid.random(), state.name,
+                    template?.id ?: Uuid.random(), state.name,
                     state.exercises.map { exercise ->
                         CreateTemplateExerciseInput(
                             exercise.id, exercise.exerciseId, exercise.positionInWorkout,
@@ -189,16 +249,31 @@ class TemplateEditorViewModel(
                                     set.id, set.positionInExercise,
                                     checkNotNull(values.reps.toIntOrNull()) { "Every set requires repetitions." },
                                     checkNotNull(values.weight.toDoubleOrNull()) { "Every set requires weight." },
-                                    WeightUnit.LB,
+                                    set.weightUnit,
                                 )
                             },
                         )
                     },
                 )
-                createWorkoutTemplate(input, currentInstant())
+                if (template == null) {
+                    createWorkoutTemplate(input, currentInstant())
+                } else {
+                    updateWorkoutTemplate(input, currentInstant())
+                }
                 _events.send(TemplateEditorEvent.Saved)
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _uiState.update { it.copy(saving = false, error = e.message ?: "Unable to create template.") } }
+            catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        saving = false,
+                        error = e.message ?: if (template == null) {
+                            "Unable to create template."
+                        } else {
+                            "Unable to update template."
+                        },
+                    )
+                }
+            }
         }
     }
 }

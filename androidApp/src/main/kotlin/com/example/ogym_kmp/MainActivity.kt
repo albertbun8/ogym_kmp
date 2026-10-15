@@ -5,18 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.ogym_kmp.core.di.AppDependencies
-import com.example.ogym_kmp.core.database.DatabaseDriverFactory
-import kotlin.getValue
 
 class MainActivity : ComponentActivity() {
-    private val appDependencies by lazy {
-        AppDependencies(
-            baseUrl = "http://192.168.2.26:8080",
-            databaseDriverFactory = DatabaseDriverFactory(applicationContext),
-        )
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(
@@ -31,7 +21,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            App(appDependencies)
+            App((application as OGymApplication).appDependencies)
         }
     }
 }

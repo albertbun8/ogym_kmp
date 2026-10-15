@@ -50,12 +50,62 @@ class WorkoutTemplateRepositoryImpl(
         }
     }
 
+    override suspend fun updateWorkoutTemplate(
+        input: CreateWorkoutTemplateInput,
+        updatedAt: Instant,
+    ): WorkoutTemplate {
+        val existing = readCache().firstOrNull { it.id == input.clientGeneratedId }
+            ?: error("Template not found.")
+        val pending = input.toTemplate(updatedAt).copy(
+            ownerId = existing.ownerId,
+            createdAt = existing.createdAt,
+        )
+        val currentSyncStatus = database.workoutTemplateCacheQueries.selectCachedWorkoutTemplates()
+            .executeAsList()
+            .firstOrNull { it.id == input.clientGeneratedId.toString() }
+            ?.sync_status
+        cacheTemplate(
+            pending,
+            if (currentSyncStatus == "PENDING_SYNC") "PENDING_SYNC" else "PENDING_UPDATE",
+        )
+        return try {
+            val synced = workoutApi.updateWorkoutTemplate(input.toRequest()).toDomain()
+            cacheTemplate(synced, "SYNCED")
+            synced
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            pending
+        }
+    }
+
+    override suspend fun deleteWorkoutTemplate(id: Uuid) {
+        val templateId = id.toString()
+        val syncStatus = database.workoutTemplateCacheQueries.selectCachedWorkoutTemplates()
+            .executeAsList()
+            .firstOrNull { it.id == templateId }
+            ?.sync_status
+        if (syncStatus != "PENDING_SYNC") {
+            workoutApi.deleteWorkoutTemplate(templateId)
+        }
+        database.transaction {
+            database.workoutTemplateCacheQueries.deleteTemplateSetsForTemplate(templateId)
+            database.workoutTemplateCacheQueries.deleteTemplateExercisesForTemplate(templateId)
+            database.workoutTemplateCacheQueries.deleteCachedWorkoutTemplate(templateId)
+        }
+    }
+
     private suspend fun syncPendingTemplates() {
-        val pendingIds = database.workoutTemplateCacheQueries.selectPendingWorkoutTemplates()
-            .executeAsList().map { Uuid.parse(it.id) }.toSet()
-        readCache().filter { it.id in pendingIds }.forEach { template ->
+        val pending = database.workoutTemplateCacheQueries.selectPendingWorkoutTemplates()
+            .executeAsList().associate { Uuid.parse(it.id) to it.sync_status }
+        readCache().filter { it.id in pending }.forEach { template ->
             try {
-                val synced = workoutApi.createWorkoutTemplate(template.toRequest()).toDomain()
+                val request = template.toRequest()
+                val synced = if (pending[template.id] == "PENDING_UPDATE") {
+                    workoutApi.updateWorkoutTemplate(request).toDomain()
+                } else {
+                    workoutApi.createWorkoutTemplate(request).toDomain()
+                }
                 cacheTemplate(synced, "SYNCED")
             } catch (exception: CancellationException) {
                 throw exception

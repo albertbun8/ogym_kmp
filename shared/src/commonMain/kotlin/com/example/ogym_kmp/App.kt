@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBar
@@ -37,8 +38,10 @@ import com.example.ogym_kmp.core.di.AppDependencies
 import com.example.ogym_kmp.feature.workout.presentation.home.HomeScreen
 import com.example.ogym_kmp.feature.workout.presentation.home.HomeViewModel
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
+import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.presentation.active.ActiveWorkoutScreen
 import com.example.ogym_kmp.feature.workout.presentation.active.ActiveWorkoutViewModel
+import com.example.ogym_kmp.feature.workout.presentation.session.ActiveWorkoutSessionUiState
 import com.example.ogym_kmp.feature.workout.presentation.template.TemplateEditorScreen
 import com.example.ogym_kmp.feature.workout.presentation.template.TemplateEditorViewModel
 
@@ -50,26 +53,24 @@ private enum class MainDestination(val label: String) {
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun App(dependencies: AppDependencies) {
-    val homeViewModel = viewModel {
-        HomeViewModel(
-            getWorkoutTemplates = dependencies.getWorkoutTemplates,
-            getWorkoutSessions = dependencies.getWorkoutSessions,
-            startEmptyWorkout = dependencies.startEmptyWorkout,
-            startWorkoutFromTemplate = dependencies.startWorkoutFromTemplate,
-            getExercises = dependencies.getExercises,
-        )
-    }
-    var destination by rememberSaveable { mutableStateOf(MainDestination.Home) }
-    var activeWorkout by remember { mutableStateOf<ActiveWorkoutDraft?>(null) }
-    var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
-    var darkTheme by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(dependencies) {
-        activeWorkout = dependencies.getActiveWorkout()
+    val homeViewModel = viewModel {
+        dependencies.workout.createHomeViewModel()
     }
+
+    val sessionViewModel = viewModel {
+        dependencies.workout.createActiveWorkoutSessionViewModel()
+    }
+
+    var destination by rememberSaveable { mutableStateOf(MainDestination.Home) }
+    val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
+    var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
+    var editedTemplate by remember { mutableStateOf<WorkoutTemplate?>(null) }
+    var darkTheme by rememberSaveable { mutableStateOf(false) }
+    if (sessionState is ActiveWorkoutSessionUiState.Loading) return
 
     OGymTheme(darkTheme = darkTheme) {
-        val workout = activeWorkout
+        val workout = (sessionState as? ActiveWorkoutSessionUiState.Active)?.workout
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.onBackground,
@@ -89,29 +90,24 @@ fun App(dependencies: AppDependencies) {
                     destination = destination,
                     homeViewModel = homeViewModel,
                     activeWorkout = null,
-                    onWorkoutStarted = { activeWorkout = it },
-                    onCreateTemplate = { templateEditorOpen = true },
+                    onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
+                    onCreateTemplate = {
+                        editedTemplate = null
+                        templateEditorOpen = true
+                    },
+                    onEditTemplate = {
+                        editedTemplate = it
+                        templateEditorOpen = true
+                    },
                     darkTheme = darkTheme,
                     onDarkThemeChanged = { darkTheme = it },
                     modifier = Modifier.padding(innerPadding),
                 )
             } else if (workout != null) {
                 val activeWorkoutViewModel = viewModel(key = workout.id.toString()) {
-                    ActiveWorkoutViewModel(
-                        workout = workout,
-                        discardActiveWorkout = dependencies.discardActiveWorkout,
-                        getExercises = dependencies.getExercises,
-                        addExerciseToActiveWorkout = dependencies.addExerciseToActiveWorkout,
-                        addSetToActiveWorkout = dependencies.addSetToActiveWorkout,
-                        reorderActiveWorkoutExercise = dependencies.reorderActiveWorkoutExercise,
-                        removeExerciseFromActiveWorkout = dependencies.removeExerciseFromActiveWorkout,
-                        removeSetFromActiveWorkout = dependencies.removeSetFromActiveWorkout,
-                        updateActiveWorkoutSet = dependencies.updateActiveWorkoutSet,
-                        setActiveWorkoutSetCompletion = dependencies.setActiveWorkoutSetCompletion,
-                        getPreviousExercisePerformances = dependencies.getPreviousExercisePerformances,
-                        finishActiveWorkout = dependencies.finishActiveWorkout,
-                    )
+                    dependencies.workout.createActiveWorkoutViewModel(workout)
                 }
+
                 val sheetState = rememberBottomSheetScaffoldState(
                     bottomSheetState = rememberStandardBottomSheetState(
                         initialValue = SheetValue.Expanded,
@@ -130,9 +126,9 @@ fun App(dependencies: AppDependencies) {
                     sheetContent = {
                         ActiveWorkoutScreen(
                             viewModel = activeWorkoutViewModel,
-                            onClosed = { activeWorkout = null },
+                            onClosed = { sessionViewModel.onWorkoutEnded() },
                             onFinished = {
-                                activeWorkout = null
+                                sessionViewModel.onWorkoutEnded()
                                 homeViewModel.refreshSessions()
                             },
                         )
@@ -142,19 +138,25 @@ fun App(dependencies: AppDependencies) {
                         destination = destination,
                         homeViewModel = homeViewModel,
                         activeWorkout = workout,
-                        onWorkoutStarted = { activeWorkout = it },
-                        onCreateTemplate = { templateEditorOpen = true },
+                        onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
+                        onCreateTemplate = {
+                            editedTemplate = null
+                            templateEditorOpen = true
+                        },
+                        onEditTemplate = {
+                            editedTemplate = it
+                            templateEditorOpen = true
+                        },
                         darkTheme = darkTheme,
                         onDarkThemeChanged = { darkTheme = it },
                     )
                 }
             } else {
-                val editorViewModel = viewModel(key = "template-editor") {
-                    TemplateEditorViewModel(
-                        getExercises = dependencies.getExercises,
-                        createWorkoutTemplate = dependencies.createWorkoutTemplate,
-                    )
-                }
+                val editorViewModel =
+                    viewModel(key = "template-editor-${editedTemplate?.id ?: "new"}") {
+                        dependencies.workout.createTemplateEditorViewModel(editedTemplate)
+                    }
+
                 BottomSheetScaffold(
                     modifier = Modifier.padding(innerPadding),
                     scaffoldState = rememberBottomSheetScaffoldState(
@@ -172,6 +174,7 @@ fun App(dependencies: AppDependencies) {
                     sheetContent = {
                         TemplateEditorScreen(viewModel = editorViewModel) { saved ->
                             templateEditorOpen = false
+                            editedTemplate = null
                             if (saved) homeViewModel.onAction(
                                 com.example.ogym_kmp.feature.workout.presentation.home.HomeUiAction.RetryTemplates,
                             )
@@ -182,8 +185,15 @@ fun App(dependencies: AppDependencies) {
                         destination = destination,
                         homeViewModel = homeViewModel,
                         activeWorkout = null,
-                        onWorkoutStarted = { activeWorkout = it },
-                        onCreateTemplate = { templateEditorOpen = true },
+                        onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
+                        onCreateTemplate = {
+                            editedTemplate = null
+                            templateEditorOpen = true
+                        },
+                        onEditTemplate = {
+                            editedTemplate = it
+                            templateEditorOpen = true
+                        },
                         darkTheme = darkTheme,
                         onDarkThemeChanged = { darkTheme = it },
                     )
@@ -213,6 +223,7 @@ private fun MainContent(
     activeWorkout: ActiveWorkoutDraft?,
     onWorkoutStarted: (ActiveWorkoutDraft) -> Unit,
     onCreateTemplate: () -> Unit,
+    onEditTemplate: (WorkoutTemplate) -> Unit,
     darkTheme: Boolean,
     onDarkThemeChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -223,8 +234,10 @@ private fun MainContent(
             activeWorkout = activeWorkout,
             onWorkoutStarted = onWorkoutStarted,
             onCreateTemplate = onCreateTemplate,
+            onEditTemplate = onEditTemplate,
             modifier = modifier,
         )
+
         MainDestination.Profile -> ProfilePlaceholder(
             darkTheme = darkTheme,
             onDarkThemeChanged = onDarkThemeChanged,

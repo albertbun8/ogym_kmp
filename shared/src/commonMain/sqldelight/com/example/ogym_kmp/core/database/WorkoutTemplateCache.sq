@@ -27,7 +27,8 @@ selectCachedWorkoutTemplates:
 SELECT * FROM cached_workout_template ORDER BY name COLLATE NOCASE;
 
 selectPendingWorkoutTemplates:
-SELECT * FROM cached_workout_template WHERE sync_status = 'PENDING_SYNC';
+SELECT * FROM cached_workout_template
+WHERE sync_status IN ('PENDING_SYNC', 'PENDING_UPDATE');
 
 selectCachedTemplateExercises:
 SELECT * FROM cached_template_exercise
@@ -71,3 +72,6 @@ DELETE FROM cached_template_set WHERE template_exercise_id IN (
 
 deleteTemplateExercisesForTemplate:
 DELETE FROM cached_template_exercise WHERE template_id = ?;
+
+deleteCachedWorkoutTemplate:
+DELETE FROM cached_workout_template WHERE id = ?;

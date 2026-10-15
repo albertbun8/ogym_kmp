@@ -39,6 +39,7 @@ data class HomeUiState(
     val templates: Loadable<List<WorkoutTemplateItemUi>> = Loadable.Loading,
     val sessions: Loadable<List<WorkoutSessionItemUi>> = Loadable.Loading,
     val workoutStartError: String? = null,
+    val templateActionError: String? = null,
     val expandedSessionId: Uuid? = null,
 )
 
@@ -47,6 +48,8 @@ sealed interface HomeUiAction {
     data object RetrySessions : HomeUiAction
     data object StartEmptyWorkout : HomeUiAction
     data object CreateTemplate : HomeUiAction
+    data class EditTemplate(val id: Uuid) : HomeUiAction
+    data class DeleteTemplate(val id: Uuid) : HomeUiAction
     data class SelectTemplate(val id: Uuid) : HomeUiAction
     data class SelectSession(val id: Uuid) : HomeUiAction
 }
