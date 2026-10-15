@@ -69,6 +69,52 @@ class PostgresWorkoutTemplateRepositoryTest {
         assertEquals(template, repository.findById(templateId))
     }
 
+    @Test
+    fun `updates an aggregate and replaces its children`() {
+        val templateId = UUID.fromString("90000000-0000-0000-0000-000000000011")
+        val original = WorkoutTemplate(
+            id = templateId,
+            ownerId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            name = "Original",
+            exercises = listOf(
+                TemplateExercise(
+                    id = UUID.fromString("90000000-0000-0000-0000-000000000012"),
+                    exerciseId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"),
+                    positionInTemplate = 0,
+                    sets = emptyList(),
+                ),
+            ),
+            createdAt = Instant.parse("2026-09-08T12:00:00Z"),
+            updatedAt = Instant.parse("2026-09-08T12:00:00Z"),
+        )
+        repository.save(original)
+
+        val updated = original.copy(
+            name = "Updated",
+            exercises = listOf(
+                TemplateExercise(
+                    id = UUID.fromString("90000000-0000-0000-0000-000000000013"),
+                    exerciseId = UUID.fromString("550e8400-e29b-41d4-a716-446655440001"),
+                    positionInTemplate = 0,
+                    sets = listOf(
+                        TemplateSet(
+                            id = UUID.fromString("90000000-0000-0000-0000-000000000014"),
+                            positionInExercise = 0,
+                            targetReps = 12,
+                            targetWeight = 45.0,
+                            targetWeightUnit = WeightUnit.LB,
+                        ),
+                    ),
+                ),
+            ),
+            updatedAt = Instant.parse("2026-09-08T13:00:00Z"),
+        )
+
+        repository.save(updated)
+
+        assertEquals(updated, repository.findById(templateId))
+    }
+
     companion object {
         @Container
         @JvmField

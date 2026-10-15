@@ -45,4 +45,39 @@ class WorkoutTemplateService(
             ),
         )
     }
+
+    fun update(id: UUID, request: CreateWorkoutTemplateRequest): WorkoutTemplate {
+        require(id == request.clientGeneratedId) { "Template id does not match the request path." }
+        val existing = requireNotNull(workoutTemplateRepository.findById(id)) { "Template not found." }
+        require(request.name.isNotBlank()) { "Template name must not be blank." }
+        require(request.exercises.isNotEmpty()) { "A template must contain at least one exercise." }
+        return workoutTemplateRepository.save(
+            existing.copy(
+                name = request.name.trim(),
+                exercises = request.exercises.map { exercise ->
+                    TemplateExercise(
+                        id = UUID.randomUUID(),
+                        exerciseId = exercise.exerciseId,
+                        positionInTemplate = exercise.positionInTemplate,
+                        sets = exercise.sets.map { set ->
+                            require(set.targetReps >= 0 && set.targetWeight >= 0.0)
+                            TemplateSet(
+                                id = UUID.randomUUID(),
+                                positionInExercise = set.positionInExercise,
+                                targetReps = set.targetReps,
+                                targetWeight = set.targetWeight,
+                                targetWeightUnit = set.targetWeightUnit,
+                            )
+                        },
+                    )
+                },
+                updatedAt = Instant.now(),
+            ),
+        )
+    }
+
+    fun delete(id: UUID) {
+        requireNotNull(workoutTemplateRepository.findById(id)) { "Template not found." }
+        workoutTemplateRepository.deleteById(id)
+    }
 }

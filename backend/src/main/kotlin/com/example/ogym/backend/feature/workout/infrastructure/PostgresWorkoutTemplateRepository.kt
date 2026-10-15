@@ -24,6 +24,8 @@ class PostgresWorkoutTemplateRepository(
     override fun findById(id: UUID): WorkoutTemplate? =
         crudRepository.findById(id).orElse(null)?.toDomain()
 
+    override fun deleteById(id: UUID) = crudRepository.deleteById(id)
+
     @Transactional
     override fun save(template: WorkoutTemplate): WorkoutTemplate {
         val entity = template.toEntity()

@@ -6,4 +6,5 @@ interface WorkoutTemplateRepository {
     fun findAll(): List<WorkoutTemplate>
     fun findById(id: java.util.UUID): WorkoutTemplate?
     fun save(template: WorkoutTemplate): WorkoutTemplate
+    fun deleteById(id: java.util.UUID)
 }
