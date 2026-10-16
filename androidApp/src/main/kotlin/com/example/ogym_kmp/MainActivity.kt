@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            App((application as OGymApplication).appDependencies)
+            App()
         }
     }
 }
