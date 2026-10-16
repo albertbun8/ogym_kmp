@@ -42,8 +42,11 @@ import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.presentation.active.ActiveWorkoutScreen
 import com.example.ogym_kmp.feature.workout.presentation.active.ActiveWorkoutViewModel
 import com.example.ogym_kmp.feature.workout.presentation.session.ActiveWorkoutSessionUiState
+import com.example.ogym_kmp.feature.workout.presentation.session.ActiveWorkoutSessionViewModel
 import com.example.ogym_kmp.feature.workout.presentation.template.TemplateEditorScreen
 import com.example.ogym_kmp.feature.workout.presentation.template.TemplateEditorViewModel
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 private enum class MainDestination(val label: String) {
     Home("Home"),
@@ -52,15 +55,9 @@ private enum class MainDestination(val label: String) {
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun App(dependencies: AppDependencies) {
-
-    val homeViewModel = viewModel {
-        dependencies.workout.createHomeViewModel()
-    }
-
-    val sessionViewModel = viewModel {
-        dependencies.workout.createActiveWorkoutSessionViewModel()
-    }
+fun App() {
+    val homeViewModel = koinViewModel<HomeViewModel>()
+    val sessionViewModel = koinViewModel<ActiveWorkoutSessionViewModel>()
 
     var destination by rememberSaveable { mutableStateOf(MainDestination.Home) }
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
@@ -104,9 +101,7 @@ fun App(dependencies: AppDependencies) {
                     modifier = Modifier.padding(innerPadding),
                 )
             } else if (workout != null) {
-                val activeWorkoutViewModel = viewModel(key = workout.id.toString()) {
-                    dependencies.workout.createActiveWorkoutViewModel(workout)
-                }
+                val activeWorkoutViewModel = koinViewModel<ActiveWorkoutViewModel>(key = workout.id.toString()) { parametersOf(workout) }
 
                 val sheetState = rememberBottomSheetScaffoldState(
                     bottomSheetState = rememberStandardBottomSheetState(
@@ -152,10 +147,7 @@ fun App(dependencies: AppDependencies) {
                     )
                 }
             } else {
-                val editorViewModel =
-                    viewModel(key = "template-editor-${editedTemplate?.id ?: "new"}") {
-                        dependencies.workout.createTemplateEditorViewModel(editedTemplate)
-                    }
+                val editorViewModel = koinViewModel<TemplateEditorViewModel>(key = "template-editor-${editedTemplate?.id ?: "new"}") { parametersOf(editedTemplate) }
 
                 BottomSheetScaffold(
                     modifier = Modifier.padding(innerPadding),

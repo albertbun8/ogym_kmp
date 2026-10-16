@@ -12,5 +12,5 @@ private val appDependencies by lazy {
 }
 
 fun MainViewController() = ComposeUIViewController {
-    App(appDependencies)
+    App()
 }
