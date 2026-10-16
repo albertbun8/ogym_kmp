@@ -25,16 +25,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBar
 import com.example.ogym_kmp.core.designsystem.component.OGymTopBar
-import com.example.ogym_kmp.core.di.AppDependencies
 import com.example.ogym_kmp.feature.workout.presentation.home.HomeScreen
 import com.example.ogym_kmp.feature.workout.presentation.home.HomeViewModel
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
@@ -101,7 +98,10 @@ fun App() {
                     modifier = Modifier.padding(innerPadding),
                 )
             } else if (workout != null) {
-                val activeWorkoutViewModel = koinViewModel<ActiveWorkoutViewModel>(key = workout.id.toString()) { parametersOf(workout) }
+                val activeWorkoutViewModel =
+                    koinViewModel<ActiveWorkoutViewModel>(key = workout.id.toString()) {
+                        parametersOf(workout)
+                    }
 
                 val sheetState = rememberBottomSheetScaffoldState(
                     bottomSheetState = rememberStandardBottomSheetState(
@@ -147,7 +147,10 @@ fun App() {
                     )
                 }
             } else {
-                val editorViewModel = koinViewModel<TemplateEditorViewModel>(key = "template-editor-${editedTemplate?.id ?: "new"}") { parametersOf(editedTemplate) }
+                val editorViewModel =
+                    koinViewModel<TemplateEditorViewModel>(key = "template-editor-${editedTemplate?.id ?: "new"}") {
+                        parametersOf(editedTemplate)
+                    }
 
                 BottomSheetScaffold(
                     modifier = Modifier.padding(innerPadding),
