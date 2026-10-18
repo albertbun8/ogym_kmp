@@ -24,8 +24,7 @@ class KoinModulesTest {
             extraTypes = listOf(
                 HttpClient::class,
                 OGymDatabase::class,
-                ActiveWorkoutDraft::class,
-                WorkoutTemplate::class
+                ActiveWorkoutDraft::class
             ),
         )
     }

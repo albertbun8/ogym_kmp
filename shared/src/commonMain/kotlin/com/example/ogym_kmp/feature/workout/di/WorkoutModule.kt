@@ -16,6 +16,7 @@ import com.example.ogym_kmp.feature.workout.domain.usecase.FinishActiveWorkout
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetActiveWorkout
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetPreviousExercisePerformances
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutSessions
+import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutTemplate
 import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutTemplates
 import com.example.ogym_kmp.feature.workout.domain.usecase.RemoveExerciseFromActiveWorkout
 import com.example.ogym_kmp.feature.workout.domain.usecase.RemoveSetFromActiveWorkout
@@ -39,6 +40,7 @@ val workoutModule = module {
     single<ActiveWorkoutRepository> { SqlDelightActiveWorkoutRepository(get()) }
 
     factory { GetWorkoutTemplates(get()) }
+    factory { GetWorkoutTemplate(get()) }
     factory { GetWorkoutSessions(get()) }
     factory { StartEmptyWorkout(get()) }
     factory { GetActiveWorkout(get()) }
@@ -80,7 +82,8 @@ val workoutModule = module {
             get(),
             get(),
             get(),
-            template = params.getOrNull()
+            get(),
+            templateId = params.getOrNull()
         )
     }
 }

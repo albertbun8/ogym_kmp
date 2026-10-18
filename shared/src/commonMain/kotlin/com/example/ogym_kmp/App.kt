@@ -44,6 +44,7 @@ import com.example.ogym_kmp.feature.workout.presentation.template.TemplateEditor
 import com.example.ogym_kmp.feature.workout.presentation.template.TemplateEditorViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlin.uuid.Uuid
 
 private enum class MainDestination(val label: String) {
     Home("Home"),
@@ -59,7 +60,7 @@ fun App() {
     var destination by rememberSaveable { mutableStateOf(MainDestination.Home) }
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
     var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
-    var editedTemplate by remember { mutableStateOf<WorkoutTemplate?>(null) }
+    var editedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
     var darkTheme by rememberSaveable { mutableStateOf(false) }
     if (sessionState is ActiveWorkoutSessionUiState.Loading) return
 
@@ -86,11 +87,11 @@ fun App() {
                     activeWorkout = null,
                     onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
                     onCreateTemplate = {
-                        editedTemplate = null
+                        editedTemplateId = null
                         templateEditorOpen = true
                     },
                     onEditTemplate = {
-                        editedTemplate = it
+                        editedTemplateId = it.id.toString()
                         templateEditorOpen = true
                     },
                     darkTheme = darkTheme,
@@ -135,11 +136,11 @@ fun App() {
                         activeWorkout = workout,
                         onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
                         onCreateTemplate = {
-                            editedTemplate = null
+                            editedTemplateId = null
                             templateEditorOpen = true
                         },
                         onEditTemplate = {
-                            editedTemplate = it
+                            editedTemplateId = it.id.toString()
                             templateEditorOpen = true
                         },
                         darkTheme = darkTheme,
@@ -148,8 +149,8 @@ fun App() {
                 }
             } else {
                 val editorViewModel =
-                    koinViewModel<TemplateEditorViewModel>(key = "template-editor-${editedTemplate?.id ?: "new"}") {
-                        parametersOf(editedTemplate)
+                    koinViewModel<TemplateEditorViewModel>(key = "template-editor-${editedTemplateId ?: "new"}") {
+                        parametersOf( editedTemplateId?.let(Uuid::parse))
                     }
 
                 BottomSheetScaffold(
@@ -169,7 +170,7 @@ fun App() {
                     sheetContent = {
                         TemplateEditorScreen(viewModel = editorViewModel) { saved ->
                             templateEditorOpen = false
-                            editedTemplate = null
+                            editedTemplateId = null
                             if (saved) homeViewModel.onAction(
                                 com.example.ogym_kmp.feature.workout.presentation.home.HomeUiAction.RetryTemplates,
                             )
@@ -182,11 +183,11 @@ fun App() {
                         activeWorkout = null,
                         onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
                         onCreateTemplate = {
-                            editedTemplate = null
+                            editedTemplateId = null
                             templateEditorOpen = true
                         },
                         onEditTemplate = {
-                            editedTemplate = it
+                            editedTemplateId = it.id.toString()
                             templateEditorOpen = true
                         },
                         darkTheme = darkTheme,

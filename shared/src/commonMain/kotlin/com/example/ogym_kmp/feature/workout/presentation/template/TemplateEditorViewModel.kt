@@ -11,8 +11,8 @@ import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutSetDraft
 import com.example.ogym_kmp.feature.workout.domain.model.CreateTemplateExerciseInput
 import com.example.ogym_kmp.feature.workout.domain.model.CreateTemplateSetInput
 import com.example.ogym_kmp.feature.workout.domain.model.CreateWorkoutTemplateInput
-import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.domain.usecase.CreateWorkoutTemplate
+import com.example.ogym_kmp.feature.workout.domain.usecase.GetWorkoutTemplate
 import com.example.ogym_kmp.feature.workout.domain.usecase.UpdateWorkoutTemplate
 import com.example.ogym_kmp.feature.workout.presentation.active.ExercisePickerState
 import kotlinx.coroutines.CancellationException
@@ -56,15 +56,15 @@ sealed interface TemplateEditorAction {
 
 class TemplateEditorViewModel(
     private val getExercises: GetExercises,
+    private val getWorkoutTemplate: GetWorkoutTemplate,
     private val createWorkoutTemplate: CreateWorkoutTemplate,
     private val updateWorkoutTemplate: UpdateWorkoutTemplate,
-    private val template: WorkoutTemplate? = null,
+    private val templateId: Uuid? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         TemplateEditorUiState(
-            name = template?.name ?: "New template",
-            isEditing = template != null,
-            loadingTemplate = template != null,
+            isEditing = templateId != null,
+            loadingTemplate = templateId != null,
         ),
     )
     val uiState = _uiState.asStateFlow()
@@ -72,12 +72,24 @@ class TemplateEditorViewModel(
     val events = _events.receiveAsFlow()
 
     init {
-        if (template != null) loadTemplate(template)
+        if (templateId != null) loadTemplate(templateId)
     }
 
-    private fun loadTemplate(template: WorkoutTemplate) {
+    private fun loadTemplate(templateId: Uuid) {
         viewModelScope.launch {
             try {
+                val template = getWorkoutTemplate(templateId)
+
+                if (template == null) {
+                    _uiState.update {
+                        it.copy(
+                            loadingTemplate = false,
+                            error = "Unable to load template."
+                        )
+                    }
+                    return@launch
+                }
+
                 val exercisesById = getExercises().associateBy(Exercise::id)
                 _uiState.update { state ->
                     state.copy(
@@ -100,6 +112,7 @@ class TemplateEditorViewModel(
                                 },
                             )
                         },
+                        name = template.name,
                         inputs = template.exercises.flatMap { it.sets }.associate { set ->
                             set.id to TemplateSetInputUi(
                                 weight = set.targetWeight.toString(),
@@ -239,7 +252,7 @@ class TemplateEditorViewModel(
             _uiState.update { it.copy(saving = true, error = null) }
             try {
                 val input = CreateWorkoutTemplateInput(
-                    template?.id ?: Uuid.random(), state.name,
+                    templateId ?: Uuid.random(), state.name,
                     state.exercises.map { exercise ->
                         CreateTemplateExerciseInput(
                             exercise.id, exercise.exerciseId, exercise.positionInWorkout,
@@ -255,7 +268,7 @@ class TemplateEditorViewModel(
                         )
                     },
                 )
-                if (template == null) {
+                if (templateId == null) {
                     createWorkoutTemplate(input, currentInstant())
                 } else {
                     updateWorkoutTemplate(input, currentInstant())
@@ -266,7 +279,7 @@ class TemplateEditorViewModel(
                 _uiState.update {
                     it.copy(
                         saving = false,
-                        error = e.message ?: if (template == null) {
+                        error = e.message ?: if (templateId == null) {
                             "Unable to create template."
                         } else {
                             "Unable to update template."
