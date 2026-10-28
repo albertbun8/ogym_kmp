@@ -51,6 +51,12 @@ private enum class MainDestination(val label: String) {
     Profile("Profile"),
 }
 
+private sealed interface AppSheet {
+    data object None : AppSheet
+    data class Workout(val activeWorkoutDraft: ActiveWorkoutDraft) : AppSheet
+    data class TemplateEditor(val templateId: String?) : AppSheet
+}
+
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun App() {
@@ -66,6 +72,12 @@ fun App() {
 
     OGymTheme(darkTheme = darkTheme) {
         val workout = (sessionState as? ActiveWorkoutSessionUiState.Active)?.workout
+        val sheet: AppSheet = when {
+            workout != null -> AppSheet.Workout(workout)
+            templateEditorOpen -> AppSheet.TemplateEditor(editedTemplateId)
+            else -> AppSheet.None
+        }
+
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.onBackground,
@@ -80,103 +92,8 @@ fun App() {
                 )
             },
         ) { innerPadding ->
-            if (workout == null && !templateEditorOpen) {
-                MainContent(
-                    destination = destination,
-                    homeViewModel = homeViewModel,
-                    activeWorkout = null,
-                    onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
-                    onCreateTemplate = {
-                        editedTemplateId = null
-                        templateEditorOpen = true
-                    },
-                    onEditTemplate = {
-                        editedTemplateId = it.id.toString()
-                        templateEditorOpen = true
-                    },
-                    darkTheme = darkTheme,
-                    onDarkThemeChanged = { darkTheme = it },
-                    modifier = Modifier.padding(innerPadding),
-                )
-            } else if (workout != null) {
-                val activeWorkoutViewModel =
-                    koinViewModel<ActiveWorkoutViewModel>(key = workout.id.toString()) {
-                        parametersOf(workout)
-                    }
-
-                val sheetState = rememberBottomSheetScaffoldState(
-                    bottomSheetState = rememberStandardBottomSheetState(
-                        initialValue = SheetValue.Expanded,
-                        skipHiddenState = true,
-                    ),
-                )
-                BottomSheetScaffold(
-                    modifier = Modifier.padding(innerPadding),
-                    scaffoldState = sheetState,
-                    sheetPeekHeight = 96.dp,
-                    sheetDragHandle = { OGymSheetDragHandle() },
-                    containerColor = MaterialTheme.colorScheme.background,
-                    contentColor = MaterialTheme.colorScheme.onBackground,
-                    sheetContainerColor = MaterialTheme.colorScheme.background,
-                    sheetContentColor = MaterialTheme.colorScheme.onBackground,
-                    sheetContent = {
-                        ActiveWorkoutScreen(
-                            viewModel = activeWorkoutViewModel,
-                            onClosed = { sessionViewModel.onWorkoutEnded() },
-                            onFinished = {
-                                sessionViewModel.onWorkoutEnded()
-                                homeViewModel.refreshSessions()
-                            },
-                        )
-                    },
-                ) {
-                    MainContent(
-                        destination = destination,
-                        homeViewModel = homeViewModel,
-                        activeWorkout = workout,
-                        onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
-                        onCreateTemplate = {
-                            editedTemplateId = null
-                            templateEditorOpen = true
-                        },
-                        onEditTemplate = {
-                            editedTemplateId = it.id.toString()
-                            templateEditorOpen = true
-                        },
-                        darkTheme = darkTheme,
-                        onDarkThemeChanged = { darkTheme = it },
-                    )
-                }
-            } else {
-                val editorViewModel =
-                    koinViewModel<TemplateEditorViewModel>(key = "template-editor-${editedTemplateId ?: "new"}") {
-                        parametersOf( editedTemplateId?.let(Uuid::parse))
-                    }
-
-                BottomSheetScaffold(
-                    modifier = Modifier.padding(innerPadding),
-                    scaffoldState = rememberBottomSheetScaffoldState(
-                        bottomSheetState = rememberStandardBottomSheetState(
-                            initialValue = SheetValue.Expanded,
-                            skipHiddenState = true,
-                        ),
-                    ),
-                    sheetPeekHeight = 96.dp,
-                    sheetDragHandle = { OGymSheetDragHandle() },
-                    containerColor = MaterialTheme.colorScheme.background,
-                    contentColor = MaterialTheme.colorScheme.onBackground,
-                    sheetContainerColor = MaterialTheme.colorScheme.background,
-                    sheetContentColor = MaterialTheme.colorScheme.onBackground,
-                    sheetContent = {
-                        TemplateEditorScreen(viewModel = editorViewModel) { saved ->
-                            templateEditorOpen = false
-                            editedTemplateId = null
-                            if (saved) homeViewModel.onAction(
-                                com.example.ogym_kmp.feature.workout.presentation.home.HomeUiAction.RetryTemplates,
-                            )
-                        }
-                    },
-                ) {
+            when (sheet) {
+                AppSheet.None -> {
                     MainContent(
                         destination = destination,
                         homeViewModel = homeViewModel,
@@ -192,7 +109,108 @@ fun App() {
                         },
                         darkTheme = darkTheme,
                         onDarkThemeChanged = { darkTheme = it },
+                        modifier = Modifier.padding(innerPadding),
                     )
+                }
+
+                is AppSheet.Workout -> {
+                    val activeWorkoutViewModel =
+                        koinViewModel<ActiveWorkoutViewModel>(key = sheet.activeWorkoutDraft.id.toString()) {
+                            parametersOf(sheet.activeWorkoutDraft)
+                        }
+
+                    val sheetState = rememberBottomSheetScaffoldState(
+                        bottomSheetState = rememberStandardBottomSheetState(
+                            initialValue = SheetValue.Expanded,
+                            skipHiddenState = true,
+                        ),
+                    )
+                    BottomSheetScaffold(
+                        modifier = Modifier.padding(innerPadding),
+                        scaffoldState = sheetState,
+                        sheetPeekHeight = 96.dp,
+                        sheetDragHandle = { OGymSheetDragHandle() },
+                        containerColor = MaterialTheme.colorScheme.background,
+                        contentColor = MaterialTheme.colorScheme.onBackground,
+                        sheetContainerColor = MaterialTheme.colorScheme.background,
+                        sheetContentColor = MaterialTheme.colorScheme.onBackground,
+                        sheetContent = {
+                            ActiveWorkoutScreen(
+                                viewModel = activeWorkoutViewModel,
+                                onClosed = { sessionViewModel.onWorkoutEnded() },
+                                onFinished = {
+                                    sessionViewModel.onWorkoutEnded()
+                                    homeViewModel.refreshSessions()
+                                },
+                            )
+                        },
+                    ) {
+                        MainContent(
+                            destination = destination,
+                            homeViewModel = homeViewModel,
+                            activeWorkout = sheet.activeWorkoutDraft,
+                            onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
+                            onCreateTemplate = {
+                                editedTemplateId = null
+                                templateEditorOpen = true
+                            },
+                            onEditTemplate = {
+                                editedTemplateId = it.id.toString()
+                                templateEditorOpen = true
+                            },
+                            darkTheme = darkTheme,
+                            onDarkThemeChanged = { darkTheme = it },
+                        )
+                    }
+                }
+
+                is AppSheet.TemplateEditor -> {
+                    val editorViewModel =
+                        koinViewModel<TemplateEditorViewModel>(key = "template-editor-${sheet.templateId ?: "new"}") {
+                            parametersOf(sheet.templateId?.let(Uuid::parse))
+                        }
+
+                    BottomSheetScaffold(
+                        modifier = Modifier.padding(innerPadding),
+                        scaffoldState = rememberBottomSheetScaffoldState(
+                            bottomSheetState = rememberStandardBottomSheetState(
+                                initialValue = SheetValue.Expanded,
+                                skipHiddenState = true,
+                            ),
+                        ),
+                        sheetPeekHeight = 96.dp,
+                        sheetDragHandle = { OGymSheetDragHandle() },
+                        containerColor = MaterialTheme.colorScheme.background,
+                        contentColor = MaterialTheme.colorScheme.onBackground,
+                        sheetContainerColor = MaterialTheme.colorScheme.background,
+                        sheetContentColor = MaterialTheme.colorScheme.onBackground,
+                        sheetContent = {
+                            TemplateEditorScreen(viewModel = editorViewModel) { saved ->
+                                templateEditorOpen = false
+                                editedTemplateId = null
+                                if (saved) homeViewModel.onAction(
+                                    com.example.ogym_kmp.feature.workout.presentation.home.HomeUiAction.RetryTemplates,
+                                )
+                            }
+                        },
+                    ) {
+                        MainContent(
+                            destination = destination,
+                            homeViewModel = homeViewModel,
+                            activeWorkout = null,
+                            onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
+                            onCreateTemplate = {
+                                editedTemplateId = null
+                                templateEditorOpen = true
+                            },
+                            onEditTemplate = {
+                                editedTemplateId = it.id.toString()
+                                templateEditorOpen = true
+                            },
+                            darkTheme = darkTheme,
+                            onDarkThemeChanged = { darkTheme = it },
+                        )
+                    }
                 }
             }
         }
