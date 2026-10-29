@@ -1,5 +1,7 @@
 package com.example.ogym_kmp
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,16 +26,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBar
 import com.example.ogym_kmp.core.designsystem.component.OGymTopBar
+import com.example.ogym_kmp.core.navigation.HomeRoute
+import com.example.ogym_kmp.core.navigation.ProfileRoute
 import com.example.ogym_kmp.feature.workout.presentation.home.HomeScreen
 import com.example.ogym_kmp.feature.workout.presentation.home.HomeViewModel
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
@@ -48,9 +58,9 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.uuid.Uuid
 
-private enum class MainDestination(val label: String) {
-    Home("Home"),
-    Profile("Profile"),
+private enum class MainDestination(val label: String, val route: Any) {
+    Home("Home", HomeRoute),
+    Profile("Profile", ProfileRoute),
 }
 
 private sealed interface AppSheet {
@@ -65,7 +75,7 @@ fun App() {
     val homeViewModel = koinViewModel<HomeViewModel>()
     val sessionViewModel = koinViewModel<ActiveWorkoutSessionViewModel>()
 
-    var destination by rememberSaveable { mutableStateOf(MainDestination.Home) }
+    val navController = rememberNavController()
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
     var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
     var editedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -93,15 +103,28 @@ fun App() {
             }
         }
 
+        val backStackEntry by navController.currentBackStackEntryAsState()
+        val currentDestination = MainDestination.entries.firstOrNull { destination ->
+            backStackEntry?.destination?.hasRoute(destination.route::class) == true
+        } ?: MainDestination.Home
+
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             topBar = { OGymTopBar() },
             bottomBar = {
                 OGymBottomBar(
                     items = MainDestination.entries.map { it.label },
-                    selectedItem = destination.label,
+                    selectedItem = currentDestination.label,
                     onItemSelected = { selectedLabel ->
-                        destination = MainDestination.entries.first { it.label == selectedLabel }
+                        val selected = MainDestination.entries.first { it.label == selectedLabel }
+
+                        navController.navigate(selected.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     },
                 )
             },
@@ -169,7 +192,7 @@ fun App() {
                 },
             ) {
                 MainContent(
-                    destination = destination,
+                    navController = navController,
                     homeViewModel = homeViewModel,
                     activeWorkout = workout,
                     onWorkoutStarted = startWorkout,
@@ -198,7 +221,7 @@ private fun OGymSheetDragHandle() {
 
 @Composable
 private fun MainContent(
-    destination: MainDestination,
+    navController: NavHostController,
     homeViewModel: HomeViewModel,
     activeWorkout: ActiveWorkoutDraft?,
     onWorkoutStarted: (ActiveWorkoutDraft) -> Unit,
@@ -208,22 +231,30 @@ private fun MainContent(
     onDarkThemeChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    when (destination) {
-        MainDestination.Home -> HomeScreen(
-            viewModel = homeViewModel,
-            activeWorkout = activeWorkout,
-            onWorkoutStarted = onWorkoutStarted,
-            onCreateTemplate = onCreateTemplate,
-            onEditTemplate = onEditTemplate,
-            modifier = modifier,
-        )
-
-        MainDestination.Profile -> ProfilePlaceholder(
-            darkTheme = darkTheme,
-            onDarkThemeChanged = onDarkThemeChanged,
-            modifier = modifier,
-        )
+    NavHost(
+        navController = navController,
+        startDestination = HomeRoute,
+        modifier = modifier,
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+    ) {
+        composable<HomeRoute> {
+            HomeScreen(
+                viewModel = homeViewModel,
+                activeWorkout = activeWorkout,
+                onWorkoutStarted = onWorkoutStarted,
+                onCreateTemplate = onCreateTemplate,
+                onEditTemplate = onEditTemplate,
+            )
+        }
+        composable<ProfileRoute> {
+            ProfilePlaceholder(
+                darkTheme = darkTheme,
+                onDarkThemeChanged = onDarkThemeChanged,
+            )
+        }
     }
+
 }
 
 @Composable
