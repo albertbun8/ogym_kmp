@@ -78,6 +78,19 @@ fun App() {
             else -> AppSheet.None
         }
 
+        val openTemplateEditor: (templateId: String?) -> Unit = { templateId ->
+            if (workout == null) {
+                editedTemplateId = templateId
+                templateEditorOpen = true
+            }
+        }
+
+        val startWorkout: (draft: ActiveWorkoutDraft) -> Unit = { draft ->
+            if (sheet == AppSheet.None) {
+                sessionViewModel.onWorkoutStarted(draft)
+            }
+        }
+
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.onBackground,
@@ -98,15 +111,9 @@ fun App() {
                         destination = destination,
                         homeViewModel = homeViewModel,
                         activeWorkout = null,
-                        onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
-                        onCreateTemplate = {
-                            editedTemplateId = null
-                            templateEditorOpen = true
-                        },
-                        onEditTemplate = {
-                            editedTemplateId = it.id.toString()
-                            templateEditorOpen = true
-                        },
+                        onWorkoutStarted = startWorkout,
+                        onCreateTemplate = { openTemplateEditor(null) },
+                        onEditTemplate = { openTemplateEditor(it.id.toString()) },
                         darkTheme = darkTheme,
                         onDarkThemeChanged = { darkTheme = it },
                         modifier = Modifier.padding(innerPadding),
@@ -149,15 +156,9 @@ fun App() {
                             destination = destination,
                             homeViewModel = homeViewModel,
                             activeWorkout = sheet.activeWorkoutDraft,
-                            onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
-                            onCreateTemplate = {
-                                editedTemplateId = null
-                                templateEditorOpen = true
-                            },
-                            onEditTemplate = {
-                                editedTemplateId = it.id.toString()
-                                templateEditorOpen = true
-                            },
+                            onWorkoutStarted = startWorkout,
+                            onCreateTemplate = { openTemplateEditor(null) },
+                            onEditTemplate = { openTemplateEditor(it.id.toString()) },
                             darkTheme = darkTheme,
                             onDarkThemeChanged = { darkTheme = it },
                         )
@@ -198,15 +199,9 @@ fun App() {
                             destination = destination,
                             homeViewModel = homeViewModel,
                             activeWorkout = null,
-                            onWorkoutStarted = { sessionViewModel.onWorkoutStarted(it) },
-                            onCreateTemplate = {
-                                editedTemplateId = null
-                                templateEditorOpen = true
-                            },
-                            onEditTemplate = {
-                                editedTemplateId = it.id.toString()
-                                templateEditorOpen = true
-                            },
+                            onWorkoutStarted = startWorkout,
+                            onCreateTemplate = { openTemplateEditor(null) },
+                            onEditTemplate = { openTemplateEditor(it.id.toString()) },
                             darkTheme = darkTheme,
                             onDarkThemeChanged = { darkTheme = it },
                         )
