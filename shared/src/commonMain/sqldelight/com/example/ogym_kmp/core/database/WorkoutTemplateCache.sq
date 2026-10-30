@@ -26,6 +26,9 @@ CREATE TABLE cached_template_set (
 selectCachedWorkoutTemplates:
 SELECT * FROM cached_workout_template ORDER BY name COLLATE NOCASE;
 
+selectCachedWorkoutTemplateById:
+SELECT * FROM cached_workout_template WHERE id = ?;
+
 selectPendingWorkoutTemplates:
 SELECT * FROM cached_workout_template
 WHERE sync_status IN ('PENDING_SYNC', 'PENDING_UPDATE');

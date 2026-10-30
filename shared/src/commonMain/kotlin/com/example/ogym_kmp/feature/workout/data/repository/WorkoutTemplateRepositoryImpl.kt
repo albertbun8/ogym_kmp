@@ -5,7 +5,9 @@ import com.example.ogym_kmp.feature.workout.data.remote.WorkoutApi
 import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.domain.repository.WorkoutTemplateRepository
 import com.example.ogym_kmp.core.common.model.WeightUnit
+import com.example.ogym_kmp.core.database.Cached_workout_template
 import com.example.ogym_kmp.core.database.OGymDatabase
+import com.example.ogym_kmp.core.database.WorkoutTemplateCacheQueries
 import com.example.ogym_kmp.feature.workout.domain.model.TemplateExercise
 import com.example.ogym_kmp.feature.workout.domain.model.TemplateSet
 import com.example.ogym_kmp.feature.workout.domain.model.CreateWorkoutTemplateInput
@@ -31,6 +33,13 @@ class WorkoutTemplateRepositoryImpl(
         } catch (exception: Exception) {
             readCache().ifEmpty { throw exception }
         }
+    }
+
+    override suspend fun getWorkoutTemplate(id: Uuid): WorkoutTemplate? {
+        val queries = database.workoutTemplateCacheQueries
+        val template = queries.selectCachedWorkoutTemplateById(id.toString()).executeAsOneOrNull() ?: return null
+
+        return template.toDomain(queries)
     }
 
     override suspend fun createWorkoutTemplate(
@@ -151,33 +160,33 @@ class WorkoutTemplateRepositoryImpl(
 
     private fun readCache(): List<WorkoutTemplate> {
         val queries = database.workoutTemplateCacheQueries
-        return queries.selectCachedWorkoutTemplates().executeAsList().map { template ->
-            WorkoutTemplate(
-                id = Uuid.parse(template.id),
-                ownerId = template.owner_id?.let(Uuid::parse),
-                name = template.name,
-                exercises = queries.selectCachedTemplateExercises(template.id).executeAsList().map { exercise ->
-                    TemplateExercise(
-                        id = Uuid.parse(exercise.id),
-                        exerciseId = Uuid.parse(exercise.exercise_id),
-                        positionInTemplate = exercise.position_in_template.toInt(),
-                        sets = queries.selectCachedTemplateSets(exercise.id).executeAsList().map { set ->
-                            TemplateSet(
-                                id = Uuid.parse(set.id),
-                                positionInExercise = set.position_in_exercise.toInt(),
-                                targetReps = set.target_reps.toInt(),
-                                targetWeight = set.target_weight,
-                                targetWeightUnit = WeightUnit.valueOf(set.target_weight_unit),
-                            )
-                        },
-                    )
-                },
-                createdAt = Instant.fromEpochMilliseconds(template.created_at_epoch_milliseconds),
-                updatedAt = Instant.fromEpochMilliseconds(template.updated_at_epoch_milliseconds),
-            )
-        }
+        return queries.selectCachedWorkoutTemplates().executeAsList().map { it.toDomain(queries) }
     }
 }
+
+private fun Cached_workout_template.toDomain(queries: WorkoutTemplateCacheQueries) = WorkoutTemplate(
+    id = Uuid.parse(id),
+    ownerId = owner_id?.let(Uuid::parse),
+    name = name,
+    exercises = queries.selectCachedTemplateExercises(id).executeAsList().map { exercise ->
+        TemplateExercise(
+            id = Uuid.parse(exercise.id),
+            exerciseId = Uuid.parse(exercise.exercise_id),
+            positionInTemplate = exercise.position_in_template.toInt(),
+            sets = queries.selectCachedTemplateSets(exercise.id).executeAsList().map { set ->
+                TemplateSet(
+                    id = Uuid.parse(set.id),
+                    positionInExercise = set.position_in_exercise.toInt(),
+                    targetReps = set.target_reps.toInt(),
+                    targetWeight = set.target_weight,
+                    targetWeightUnit = WeightUnit.valueOf(set.target_weight_unit),
+                )
+            },
+        )
+    },
+    createdAt = Instant.fromEpochMilliseconds(created_at_epoch_milliseconds),
+    updatedAt = Instant.fromEpochMilliseconds(updated_at_epoch_milliseconds),
+)
 
 private fun CreateWorkoutTemplateInput.toTemplate(now: Instant) = WorkoutTemplate(
     id = clientGeneratedId,

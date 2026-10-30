@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -67,22 +68,36 @@ fun HomeScreen(
     onWorkoutStarted: (ActiveWorkoutDraft) -> Unit,
     onCreateTemplate: () -> Unit,
     onEditTemplate: (WorkoutTemplate) -> Unit,
+    canStartWorkout: Boolean,
+    onStartBlocked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentOnWorkoutStarted by rememberUpdatedState(onWorkoutStarted)
+    val currentOnCreateTemplate by rememberUpdatedState(onCreateTemplate)
+    val currentOnEditTemplate by rememberUpdatedState(onEditTemplate)
+
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is HomeEvent.WorkoutStarted -> onWorkoutStarted(event.draft)
-                HomeEvent.CreateTemplate -> onCreateTemplate()
-                is HomeEvent.EditTemplate -> onEditTemplate(event.template)
+                is HomeEvent.WorkoutStarted -> currentOnWorkoutStarted(event.draft)
+                HomeEvent.CreateTemplate -> currentOnCreateTemplate()
+                is HomeEvent.EditTemplate -> currentOnEditTemplate(event.template)
             }
         }
     }
     HomeContent(
         state = state,
         activeWorkout = activeWorkout,
-        onAction = viewModel::onAction,
+        onAction = { action ->
+            val startsWorkout = action is HomeUiAction.StartEmptyWorkout ||
+                    action is HomeUiAction.SelectTemplate
+            if (startsWorkout && !canStartWorkout) {
+                onStartBlocked()
+            } else {
+                viewModel.onAction(action)
+            }
+        },
         modifier = modifier,
     )
 }
