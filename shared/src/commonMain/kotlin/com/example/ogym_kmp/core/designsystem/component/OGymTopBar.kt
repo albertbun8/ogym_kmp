@@ -1,5 +1,6 @@
 package com.example.ogym_kmp.core.designsystem.component
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,8 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,10 +23,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 
 @Composable
 fun OGymTopBar(
@@ -36,24 +37,31 @@ fun OGymTopBar(
             .fillMaxWidth()
             .statusBarsPadding()
             .height(64.dp)
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 20.dp),
     ) {
-        OGymWordmark()
-        IconButton(
+        Box(Modifier.align(Alignment.CenterStart)) {
+            OGymWordmark()
+        }
+        Surface(
             onClick = onNotificationsClick,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
+                .size(44.dp)
                 .semantics { contentDescription = "Notifications" },
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
-            NotificationBell()
+            Box(contentAlignment = Alignment.Center) {
+                NotificationBell()
+            }
         }
     }
 }
 
 @Composable
 private fun OGymWordmark() {
-    val logoColor = MaterialTheme.colorScheme.primary
+    val logoColor = OGymTheme.colors.accent
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -130,10 +138,8 @@ private fun OGymWordmark() {
         Text(
             text = "OGYM",
             color = logoColor,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Black,
-            fontStyle = FontStyle.Italic,
-            letterSpacing = (-1.2).sp,
+            style = MaterialTheme.typography.headlineSmall,
+            letterSpacing = 1.sp,
         )
     }
 }
@@ -141,7 +147,7 @@ private fun OGymWordmark() {
 @Composable
 private fun NotificationBell() {
     val bellColor = MaterialTheme.colorScheme.onBackground
-    Canvas(Modifier.size(24.dp)) {
+    Canvas(Modifier.size(20.dp)) {
         val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
         drawArc(
             color = bellColor,
