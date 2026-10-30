@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -185,10 +186,14 @@ fun App() {
                 }
             }
 
+            // The floating bottom bar draws over the content, so only the top padding is applied here;
+            // the bottom padding is given to the scrollable content and added to the sheet peek height.
+            val bottomBarPadding = innerPadding.calculateBottomPadding()
+
             BottomSheetScaffold(
-                modifier = Modifier.padding(innerPadding),
+                modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
                 scaffoldState = scaffoldState,
-                sheetPeekHeight = 96.dp,
+                sheetPeekHeight = 96.dp + bottomBarPadding,
                 sheetDragHandle = { OGymSheetDragHandle() },
                 containerColor = MaterialTheme.colorScheme.background,
                 sheetContainerColor = MaterialTheme.colorScheme.background,
@@ -209,6 +214,7 @@ fun App() {
 
                             ActiveWorkoutScreen(
                                 viewModel = activeWorkoutViewModel,
+                                modifier = Modifier.padding(bottom = bottomBarPadding),
                                 onClosed = { sessionViewModel.onWorkoutEnded() },
                                 onFinished = {
                                     sessionViewModel.onWorkoutEnded()
@@ -227,7 +233,10 @@ fun App() {
                                 closeTemplateEditor()
                             }
 
-                            TemplateEditorScreen(viewModel = editorViewModel) { saved ->
+                            TemplateEditorScreen(
+                                viewModel = editorViewModel,
+                                modifier = Modifier.padding(bottom = bottomBarPadding),
+                            ) { saved ->
                                 closeTemplateEditor()
                                 if (saved) homeViewModel.onAction(
                                     HomeUiAction.RetryTemplates,
@@ -248,6 +257,7 @@ fun App() {
                     onStartBlocked = showSheetBlockedMessage,
                     darkTheme = darkTheme,
                     onDarkThemeChanged = { darkTheme = it },
+                    contentPadding = PaddingValues(bottom = bottomBarPadding),
                 )
             }
         }
@@ -279,6 +289,7 @@ private fun MainContent(
     onStartBlocked: () -> Unit,
     darkTheme: Boolean,
     onDarkThemeChanged: (Boolean) -> Unit,
+    contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
     NavHost(
@@ -297,12 +308,14 @@ private fun MainContent(
                 onEditTemplate = onEditTemplate,
                 canStartWorkout = canStartWorkout,
                 onStartBlocked = onStartBlocked,
+                contentPadding = contentPadding,
             )
         }
         composable<ProfileRoute> {
             ProfilePlaceholder(
                 darkTheme = darkTheme,
                 onDarkThemeChanged = onDarkThemeChanged,
+                modifier = Modifier.padding(contentPadding),
             )
         }
     }

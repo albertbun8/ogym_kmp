@@ -65,6 +65,7 @@ fun HomeScreen(
     canStartWorkout: Boolean,
     onStartBlocked: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currentOnWorkoutStarted by rememberUpdatedState(onWorkoutStarted)
@@ -93,6 +94,7 @@ fun HomeScreen(
             }
         },
         modifier = modifier,
+        contentPadding = contentPadding,
     )
 }
 
@@ -102,6 +104,7 @@ fun HomeContent(
     activeWorkout: ActiveWorkoutDraft? = null,
     onAction: (HomeUiAction) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     var templatePendingDeletion by remember { mutableStateOf<WorkoutTemplateItemUi?>(null) }
     templatePendingDeletion?.let { template ->
@@ -134,7 +137,12 @@ fun HomeContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 4.dp,
+            bottom = 24.dp + contentPadding.calculateBottomPadding(),
+        ),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         item {
