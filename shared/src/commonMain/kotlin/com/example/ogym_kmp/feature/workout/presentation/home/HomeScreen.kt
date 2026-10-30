@@ -9,11 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,12 +25,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -44,10 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -59,6 +52,7 @@ import com.example.ogym_kmp.feature.workout.presentation.home.component.WorkoutT
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
 import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.core.common.currentWeekDates
+import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -71,6 +65,7 @@ fun HomeScreen(
     canStartWorkout: Boolean,
     onStartBlocked: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currentOnWorkoutStarted by rememberUpdatedState(onWorkoutStarted)
@@ -99,6 +94,7 @@ fun HomeScreen(
             }
         },
         modifier = modifier,
+        contentPadding = contentPadding,
     )
 }
 
@@ -108,6 +104,7 @@ fun HomeContent(
     activeWorkout: ActiveWorkoutDraft? = null,
     onAction: (HomeUiAction) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     var templatePendingDeletion by remember { mutableStateOf<WorkoutTemplateItemUi?>(null) }
     templatePendingDeletion?.let { template ->
@@ -140,32 +137,43 @@ fun HomeContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            end = 20.dp,
+            top = 4.dp,
+            bottom = 24.dp + contentPadding.calculateBottomPadding(),
+        ),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "YOUR TRAINING",
+                    style = MaterialTheme.typography.displaySmall,
+                )
+                Text(
+                    text = "Consistency builds a stronger you.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
         item {
             val completedDates = when (val sessions = state.sessions) {
                 is Loadable.Data -> sessions.value.mapTo(mutableSetOf()) { it.isoDate }
                 else -> emptySet()
             }
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                WeeklyActivityCalendar(completedDates = completedDates)
-                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text(
-                        text = "Your training",
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-                    Text(
-                        text = "Consistency builds a stronger you.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            ThisWeekCard(
+                completedDates = completedDates,
+                workoutCount = weeklySessions.size,
+                setCount = weeklySetCount,
+                activeDays = weeklySessions.map { it.isoDate }.distinct().size,
+            )
         }
 
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 QuickStartCard(
                     activeWorkout = activeWorkout,
                     proposedTemplate = proposedTemplate,
@@ -193,24 +201,15 @@ fun HomeContent(
         }
 
         item {
-            ThisWeekSection(
-                workoutCount = weeklySessions.size,
-                setCount = weeklySetCount,
-                activeDays = weeklySessions.map { it.isoDate }.distinct().size,
-            )
-        }
-
-        item {
             Section(
-                title = "My Templates",
+                title = "My templates",
                 action = {
                     FilledIconButton(
                         onClick = { onAction(HomeUiAction.CreateTemplate) },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .semantics { contentDescription = "Create template" },
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(14.dp),
                     ) {
-                        Text("+", style = MaterialTheme.typography.titleLarge)
+                        Icon(Icons.Filled.Add, contentDescription = "Create template")
                     }
                 },
             ) {
@@ -227,22 +226,13 @@ fun HomeContent(
                             EmptyMessage("No workout template yet.")
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                templates.value.chunked(2).forEach { rowTemplates ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        rowTemplates.forEach { template ->
-                                            WorkoutTemplateCard(
-                                                template = template,
-                                                modifier = Modifier.weight(1f),
-                                                onClick = { onAction(HomeUiAction.SelectTemplate(template.id)) },
-                                                onEdit = { onAction(HomeUiAction.EditTemplate(template.id)) },
-                                                onDelete = { templatePendingDeletion = template },
-                                            )
-                                        }
-                                        if (rowTemplates.size == 1) Spacer(Modifier.weight(1f))
-                                    }
+                                templates.value.forEach { template ->
+                                    WorkoutTemplateCard(
+                                        template = template,
+                                        onClick = { onAction(HomeUiAction.SelectTemplate(template.id)) },
+                                        onEdit = { onAction(HomeUiAction.EditTemplate(template.id)) },
+                                        onDelete = { templatePendingDeletion = template },
+                                    )
                                 }
                             }
                         }
@@ -285,20 +275,87 @@ fun HomeContent(
 }
 
 @Composable
+private fun ThisWeekCard(
+    completedDates: Set<String>,
+    workoutCount: Int,
+    setCount: Int,
+    activeDays: Int,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = "THIS WEEK", style = MaterialTheme.typography.labelMedium)
+                Text(
+                    text = "$workoutCount of $WEEKLY_WORKOUT_GOAL workouts",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            WeeklyActivityCalendar(completedDates = completedDates)
+            LinearProgressIndicator(
+                progress = { (workoutCount / WEEKLY_WORKOUT_GOAL.toFloat()).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(6.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                WeekMetric(setCount.toString(), "Sets", Modifier.weight(1f))
+                WeekMetric(activeDays.toString(), "Active days", Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekMetric(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            color = OGymTheme.colors.accent,
+        )
+        Text(
+            text = label,
+            modifier = Modifier.padding(bottom = 3.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 private fun HomeQuickActions(
     onEmptyWorkout: () -> Unit,
     onTemplates: () -> Unit,
     onHistory: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         QuickAction(Icons.Outlined.AddBox, "Empty workout", onEmptyWorkout, Modifier.weight(1f))
-        QuickActionDivider()
         QuickAction(Icons.Outlined.ContentCopy, "Templates", onTemplates, Modifier.weight(1f))
-        QuickActionDivider()
         QuickAction(Icons.Outlined.History, "History", onHistory, Modifier.weight(1f))
     }
 }
@@ -310,123 +367,31 @@ private fun QuickAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(76.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(30.dp),
-            tint = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun QuickActionDivider() {
-    Box(
-        modifier = Modifier
-            .size(width = 1.dp, height = 46.dp)
-            .background(HomeTrackColor),
-    )
-}
-
-@Composable
-private fun ThisWeekSection(
-    workoutCount: Int,
-    setCount: Int,
-    activeDays: Int,
-) {
-    Section(
-        title = "This week",
-        action = {
-            Text(
-                text = "See more  ›",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-        },
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
         ) {
-            WeekMetric(Icons.Outlined.FitnessCenter, workoutCount.toString(), "Workouts", Modifier.weight(1f))
-            MetricDivider()
-            WeekMetric(Icons.Outlined.Layers, setCount.toString(), "Sets", Modifier.weight(1f))
-            MetricDivider()
-            WeekMetric(Icons.Outlined.LocalFireDepartment, activeDays.toString(), "Active days", Modifier.weight(1f))
-        }
-        LinearProgressIndicator(
-            progress = { (workoutCount / 4f).coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(5.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = HomeTrackColor,
-        )
-        Text(
-            text = "$workoutCount of 4 workouts",
-            modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End,
-        )
-    }
-}
-
-@Composable
-private fun WeekMetric(
-    icon: ImageVector,
-    value: String,
-    label: String,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(28.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Spacer(Modifier.size(7.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = OGymTheme.colors.accent,
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
             )
         }
     }
-}
-
-@Composable
-private fun MetricDivider() {
-    Box(
-        modifier = Modifier
-            .size(width = 1.dp, height = 40.dp)
-            .background(HomeTrackColor),
-    )
 }
 
 @Composable
@@ -436,7 +401,6 @@ private fun LatestAchievementSection(session: WorkoutSessionItemUi?) {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
-            border = androidx.compose.foundation.BorderStroke(1.dp, HomeTrackColor),
         ) {
             Row(
                 modifier = Modifier.padding(14.dp),
@@ -445,22 +409,26 @@ private fun LatestAchievementSection(session: WorkoutSessionItemUi?) {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                        .size(40.dp)
+                        .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("★", color = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        imageVector = Icons.Filled.EmojiEvents,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = OGymTheme.colors.achievement,
+                    )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = session?.let { "Workout completed  ·  ${it.name}" }
+                        text = session?.let { "Workout completed · ${it.name}" }
                             ?: "Complete a workout to earn your first achievement",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleSmall,
                     )
                     session?.let {
                         Text(
-                            text = "${it.completedSetCount} sets  ·  ${it.dateLabel}",
+                            text = "${it.completedSetCount} sets · ${it.dateLabel}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -471,7 +439,7 @@ private fun LatestAchievementSection(session: WorkoutSessionItemUi?) {
     }
 }
 
-private val HomeTrackColor = Color(0xFFE5E7EB)
+private const val WEEKLY_WORKOUT_GOAL = 4
 
 @Composable
 private fun Section(
@@ -480,12 +448,12 @@ private fun Section(
     content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        androidx.compose.foundation.layout.Row(
+        Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(title.uppercase(), style = MaterialTheme.typography.titleLarge)
             action?.invoke()
         }
         content()

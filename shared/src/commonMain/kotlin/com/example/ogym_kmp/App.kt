@@ -6,12 +6,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -46,6 +51,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBar
+import com.example.ogym_kmp.core.designsystem.component.OGymBottomBarItem
 import com.example.ogym_kmp.core.designsystem.component.OGymTopBar
 import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import com.example.ogym_kmp.core.navigation.HomeRoute
@@ -66,9 +72,9 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.uuid.Uuid
 
-private enum class MainDestination(val label: String, val route: Any) {
-    Home("Home", HomeRoute),
-    Profile("Profile", ProfileRoute),
+private enum class MainDestination(val label: String, val route: Any, val icon: ImageVector) {
+    Home("Home", HomeRoute, Icons.Outlined.Home),
+    Profile("Profile", ProfileRoute, Icons.Outlined.Person),
 }
 
 private sealed interface AppSheet {
@@ -145,8 +151,8 @@ fun App() {
             topBar = { OGymTopBar() },
             bottomBar = {
                 OGymBottomBar(
-                    items = MainDestination.entries.map { it.label },
-                    selectedItem = currentDestination.label,
+                    items = MainDestination.entries.map { OGymBottomBarItem(it.label, it.icon) },
+                    selectedLabel = currentDestination.label,
                     onItemSelected = { selectedLabel ->
                         val selected = MainDestination.entries.first { it.label == selectedLabel }
 
@@ -180,10 +186,15 @@ fun App() {
                 }
             }
 
+            // The floating bottom bar draws over the content, so only the top padding is applied here;
+            // the bottom padding goes to the scrollable content (Home, Profile and the sheets), so they
+            // scroll behind the bar, and is added to the sheet peek height.
+            val bottomBarPadding = innerPadding.calculateBottomPadding()
+
             BottomSheetScaffold(
-                modifier = Modifier.padding(innerPadding),
+                modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
                 scaffoldState = scaffoldState,
-                sheetPeekHeight = 96.dp,
+                sheetPeekHeight = 96.dp + bottomBarPadding,
                 sheetDragHandle = { OGymSheetDragHandle() },
                 containerColor = MaterialTheme.colorScheme.background,
                 sheetContainerColor = MaterialTheme.colorScheme.background,
@@ -204,6 +215,7 @@ fun App() {
 
                             ActiveWorkoutScreen(
                                 viewModel = activeWorkoutViewModel,
+                                contentPadding = PaddingValues(bottom = bottomBarPadding),
                                 onClosed = { sessionViewModel.onWorkoutEnded() },
                                 onFinished = {
                                     sessionViewModel.onWorkoutEnded()
@@ -222,7 +234,10 @@ fun App() {
                                 closeTemplateEditor()
                             }
 
-                            TemplateEditorScreen(viewModel = editorViewModel) { saved ->
+                            TemplateEditorScreen(
+                                viewModel = editorViewModel,
+                                contentPadding = PaddingValues(bottom = bottomBarPadding),
+                            ) { saved ->
                                 closeTemplateEditor()
                                 if (saved) homeViewModel.onAction(
                                     HomeUiAction.RetryTemplates,
@@ -243,6 +258,7 @@ fun App() {
                     onStartBlocked = showSheetBlockedMessage,
                     darkTheme = darkTheme,
                     onDarkThemeChanged = { darkTheme = it },
+                    contentPadding = PaddingValues(bottom = bottomBarPadding),
                 )
             }
         }
@@ -254,7 +270,7 @@ private fun OGymSheetDragHandle() {
     Box(
         modifier = Modifier
             .padding(top = 6.dp, bottom = 2.dp)
-            .size(width = 32.dp, height = 4.dp)
+            .size(width = 36.dp, height = 4.dp)
             .background(
                 color = MaterialTheme.colorScheme.outline,
                 shape = RoundedCornerShape(50),
@@ -274,6 +290,7 @@ private fun MainContent(
     onStartBlocked: () -> Unit,
     darkTheme: Boolean,
     onDarkThemeChanged: (Boolean) -> Unit,
+    contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
     NavHost(
@@ -292,12 +309,14 @@ private fun MainContent(
                 onEditTemplate = onEditTemplate,
                 canStartWorkout = canStartWorkout,
                 onStartBlocked = onStartBlocked,
+                contentPadding = contentPadding,
             )
         }
         composable<ProfileRoute> {
             ProfilePlaceholder(
                 darkTheme = darkTheme,
                 onDarkThemeChanged = onDarkThemeChanged,
+                modifier = Modifier.padding(contentPadding),
             )
         }
     }
