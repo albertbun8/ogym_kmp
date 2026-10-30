@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
@@ -60,48 +61,48 @@ fun QuickStartCard(
                 contentDescription = null,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .offset(x = 16.dp, y = 16.dp)
-                    .size(width = 130.dp, height = 150.dp),
+                    .offset(x = 10.dp, y = 10.dp)
+                    .size(width = 88.dp, height = 100.dp),
                 contentScale = ContentScale.Fit,
             )
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.7f)
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .fillMaxWidth(0.76f)
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
                     text = if (proposedTemplate == null) "START TRAINING" else "NEXT WORKOUT",
                     style = MaterialTheme.typography.labelMedium,
                     color = OnHeroMuted,
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = (proposedTemplate?.name ?: "Empty workout").uppercase(),
-                        style = MaterialTheme.typography.headlineLarge,
-                        maxLines = 2,
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = proposedTemplate?.let { "${it.exerciseCount} exercises · ${it.setCount} sets" }
                             ?: "Build your session as you go.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = OnHeroMuted,
                     )
                 }
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(20.dp),
                     color = Color.White,
                     contentColor = MaterialTheme.colorScheme.primary,
                 ) {
                     Row(
                         modifier = Modifier
-                            .height(48.dp)
-                            .padding(horizontal = 22.dp),
+                            .height(40.dp)
+                            .padding(horizontal = 18.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(text = "Start workout", style = MaterialTheme.typography.labelLarge)
+                        Text(text = "Start workout", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
