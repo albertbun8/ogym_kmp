@@ -112,16 +112,28 @@ private val DarkColors = darkColorScheme(
 data class OGymExtendedColors(
     val accent: Color,
     val achievement: Color,
+    val floatingBar: Color,
+    val onFloatingBar: Color,
+    val floatingBarSelected: Color,
+    val onFloatingBarSelected: Color,
 )
 
 private val LightExtendedColors = OGymExtendedColors(
     accent = Crimson,
     achievement = Color(0xFFB45309),
+    floatingBar = CharcoalInk,
+    onFloatingBar = Color(0xFFC9BFC1),
+    floatingBarSelected = CleanSurface,
+    onFloatingBarSelected = CharcoalInk,
 )
 
 private val DarkExtendedColors = OGymExtendedColors(
     accent = EmberCrimsonText,
     achievement = Color(0xFFF5B54A),
+    floatingBar = Color(0xFF1C1B1D),
+    onFloatingBar = DarkMutedInk,
+    floatingBarSelected = DarkInk,
+    onFloatingBarSelected = DarkCanvas,
 )
 
 private val LocalOGymColors = staticCompositionLocalOf { LightExtendedColors }

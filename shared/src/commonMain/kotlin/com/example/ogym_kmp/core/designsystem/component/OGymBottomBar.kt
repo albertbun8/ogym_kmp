@@ -1,8 +1,8 @@
 package com.example.ogym_kmp.core.designsystem.component
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,12 +24,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 
 data class OGymBottomBarItem(
     val label: String,
     val icon: ImageVector,
 )
 
+/** Floating pill navigation bar; the selected tab is a light pill inside a dark one. */
 @Composable
 fun OGymBottomBar(
     items: List<OGymBottomBarItem>,
@@ -37,51 +39,47 @@ fun OGymBottomBar(
     onItemSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    val colors = OGymTheme.colors
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = colors.floatingBar,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
     ) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
+            modifier = Modifier.padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items.forEach { item ->
                 val selected = item.label == selectedLabel
-                val contentColor = if (selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-                Column(
+                Row(
                     modifier = Modifier
                         .weight(1f)
-                        .height(52.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(if (selected) colors.floatingBarSelected else Color.Transparent)
                         .selectable(
                             selected = selected,
                             role = Role.Tab,
                             onClick = { onItemSelected(item.label) },
                         ),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         imageVector = item.icon,
                         contentDescription = null,
-                        modifier = Modifier.size(22.dp),
-                        tint = contentColor,
+                        modifier = Modifier.size(20.dp),
+                        tint = if (selected) MaterialTheme.colorScheme.primary else colors.onFloatingBar,
                     )
                     Text(
                         text = item.label,
                         style = MaterialTheme.typography.bodySmall,
-                        color = contentColor,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (selected) colors.onFloatingBarSelected else colors.onFloatingBar,
+                        fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Bold,
                     )
                 }
             }
