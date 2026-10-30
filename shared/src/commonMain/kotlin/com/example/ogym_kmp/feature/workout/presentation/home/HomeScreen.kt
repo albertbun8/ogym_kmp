@@ -68,6 +68,8 @@ fun HomeScreen(
     onWorkoutStarted: (ActiveWorkoutDraft) -> Unit,
     onCreateTemplate: () -> Unit,
     onEditTemplate: (WorkoutTemplate) -> Unit,
+    canStartWorkout: Boolean,
+    onStartBlocked: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,7 +89,15 @@ fun HomeScreen(
     HomeContent(
         state = state,
         activeWorkout = activeWorkout,
-        onAction = viewModel::onAction,
+        onAction = { action ->
+            val startsWorkout = action is HomeUiAction.StartEmptyWorkout ||
+                    action is HomeUiAction.SelectTemplate
+            if (startsWorkout && !canStartWorkout) {
+                onStartBlocked()
+            } else {
+                viewModel.onAction(action)
+            }
+        },
         modifier = modifier,
     )
 }

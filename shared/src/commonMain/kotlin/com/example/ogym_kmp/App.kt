@@ -17,6 +17,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -25,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -95,10 +98,26 @@ fun App() {
             else -> AppSheet.None
         }
 
+        val snackbarHostState = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
+
+        val showSheetBlockedMessage: () -> Unit = {
+            val message = when (sheet) {
+                is AppSheet.Workout -> "Finish your current workout first"
+                is AppSheet.TemplateEditor -> "Close the template editor first"
+                AppSheet.None -> null
+            }
+            if (message != null) {
+                scope.launch { snackbarHostState.showSnackbar(message) }
+            }
+        }
+
         val openTemplateEditor: (templateId: String?) -> Unit = { templateId ->
             if (sheet == AppSheet.None) {
                 editedTemplateId = templateId
                 templateEditorOpen = true
+            } else {
+                showSheetBlockedMessage()
             }
         }
 
@@ -110,6 +129,8 @@ fun App() {
         val startWorkout: (draft: ActiveWorkoutDraft) -> Unit = { draft ->
             if (sheet == AppSheet.None) {
                 sessionViewModel.onWorkoutStarted(draft)
+            } else {
+                showSheetBlockedMessage()
             }
         }
 
@@ -120,6 +141,7 @@ fun App() {
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = { OGymTopBar() },
             bottomBar = {
                 OGymBottomBar(
@@ -174,8 +196,6 @@ fun App() {
                                     parametersOf(sheet.activeWorkoutDraft)
                                 }
 
-                            val scope = rememberCoroutineScope()
-
                             BackHandler(enabled = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
                                 scope.launch {
                                     scaffoldState.bottomSheetState.partialExpand()
@@ -219,6 +239,8 @@ fun App() {
                     onWorkoutStarted = startWorkout,
                     onCreateTemplate = { openTemplateEditor(null) },
                     onEditTemplate = { openTemplateEditor(it.id.toString()) },
+                    canStartWorkout = sheet == AppSheet.None,
+                    onStartBlocked = showSheetBlockedMessage,
                     darkTheme = darkTheme,
                     onDarkThemeChanged = { darkTheme = it },
                 )
@@ -248,6 +270,8 @@ private fun MainContent(
     onWorkoutStarted: (ActiveWorkoutDraft) -> Unit,
     onCreateTemplate: () -> Unit,
     onEditTemplate: (WorkoutTemplate) -> Unit,
+    canStartWorkout: Boolean,
+    onStartBlocked: () -> Unit,
     darkTheme: Boolean,
     onDarkThemeChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -266,6 +290,8 @@ private fun MainContent(
                 onWorkoutStarted = onWorkoutStarted,
                 onCreateTemplate = onCreateTemplate,
                 onEditTemplate = onEditTemplate,
+                canStartWorkout = canStartWorkout,
+                onStartBlocked = onStartBlocked,
             )
         }
         composable<ProfileRoute> {
