@@ -29,7 +29,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
@@ -53,6 +62,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.sp
+import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.input.KeyboardType
@@ -110,40 +124,62 @@ fun ActiveWorkoutScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = state.workout.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    text = state.workout.name.uppercase(),
+                    style = MaterialTheme.typography.headlineMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "● ${state.elapsedWorkoutSeconds.toDurationLabel()}",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    Text(
-                        text = "Rest ${state.remainingRestSeconds.toTimerLabel()}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WorkoutChip(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(OGymTheme.colors.accent, CircleShape),
+                        )
+                        Text(
+                            text = state.elapsedWorkoutSeconds.toDurationLabel(),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    WorkoutChip(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Timer,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(
+                            text = "Rest ${state.remainingRestSeconds.toTimerLabel()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
             Button(
                 onClick = { viewModel.onAction(ActiveWorkoutUiAction.Finish) },
                 enabled = !state.isFinishing,
+                modifier = Modifier.height(44.dp),
             ) {
-                Text(if (state.isFinishing) "Finishing…" else "Finish")
+                Text(
+                    text = if (state.isFinishing) "Finishing…" else "Finish",
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
         }
 
@@ -160,20 +196,32 @@ fun ActiveWorkoutScreen(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp),
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = "${state.workout.exercises.size} exercises  ·  $completedSetCount / $totalSetCount sets",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "${state.workout.exercises.size} exercises",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "$completedSetCount / $totalSetCount sets",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
 
         LinearProgressIndicator(
             progress = { workoutProgress },
-            modifier = Modifier.fillMaxWidth().height(5.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = WorkoutProgressTrackColor,
+            modifier = Modifier.fillMaxWidth().height(6.dp),
+            color = OGymTheme.colors.accent,
+            trackColor = MaterialTheme.colorScheme.outlineVariant,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
         )
 
         if (state.workout.exercises.isEmpty()) {
@@ -196,17 +244,14 @@ fun ActiveWorkoutScreen(
                             scaleY = if (dragging) 1.02f else 1f
                         },
                     shape = MaterialTheme.shapes.large,
-                    color = if (dragging) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.surface,
-                    contentColor = if (dragging) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurface,
-                    border = if (dragging) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                        else BorderStroke(1.dp, WorkoutDividerColor),
+                    color = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    border = if (dragging) BorderStroke(2.dp, OGymTheme.colors.accent) else null,
                     tonalElevation = 0.dp,
-                    shadowElevation = if (dragging) 8.dp else 2.dp,
+                    shadowElevation = if (dragging) 8.dp else 0.dp,
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 6.dp),
                         verticalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
                         Row(
@@ -257,9 +302,9 @@ fun ActiveWorkoutScreen(
                                 verticalArrangement = Arrangement.spacedBy(0.dp),
                             ) {
                                 Text(
-                                    text = exercise.exerciseName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
+                                    text = exercise.exerciseName.uppercase(),
+                                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
+                                    color = OGymTheme.colors.accent,
                                 )
                                 Text(
                                     text = exercise.muscleGroups.joinToString { it.displayName() },
@@ -271,15 +316,17 @@ fun ActiveWorkoutScreen(
                                 Text(
                                     text = "Dragging",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold,
+                                    color = OGymTheme.colors.accent,
                                 )
                             } else {
                                 Box {
-                                    IconButton(
-                                        onClick = { menuExpanded = true },
-                                        modifier = Modifier.size(32.dp),
-                                    ) { Text("⋮") }
+                                    IconButton(onClick = { menuExpanded = true }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.MoreVert,
+                                            contentDescription = "Exercise options",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                     DropdownMenu(
                                         expanded = menuExpanded,
                                         onDismissRequest = { menuExpanded = false },
@@ -340,18 +387,10 @@ fun ActiveWorkoutScreen(
                                 )
                             }
                         }
-                        HorizontalDivider(
-                            modifier = Modifier.padding(top = 3.dp),
-                            color = WorkoutDividerColor,
-                        )
-                        OutlinedButton(
+                        TextButton(
                             onClick = { viewModel.onAction(ActiveWorkoutUiAction.AddSet(exercise.id)) },
-                            modifier = Modifier.fillMaxWidth().height(38.dp),
-                            border = null,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = MaterialTheme.colorScheme.primary,
-                            ),
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            colors = ButtonDefaults.textButtonColors(contentColor = OGymTheme.colors.accent),
                         ) {
                             AddSetButtonContent()
                         }
@@ -364,13 +403,18 @@ fun ActiveWorkoutScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Button(
+            OutlinedButton(
                 onClick = { viewModel.onAction(ActiveWorkoutUiAction.OpenExercisePicker) },
-                modifier = Modifier.fillMaxWidth().height(54.dp),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
             ) {
-                Text("Add exercise")
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(8.dp))
+                Text("Add exercise", style = MaterialTheme.typography.labelLarge)
             }
-            androidx.compose.material3.TextButton(
+            TextButton(
                 onClick = { viewModel.onAction(ActiveWorkoutUiAction.Discard) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -389,31 +433,37 @@ private const val PreviousColumnWeight = 1.45f
 private const val WeightColumnWeight = 1.25f
 private const val RepsColumnWeight = 1f
 private const val DoneColumnWeight = 0.7f
-private val WorkoutFieldColor = Color(0xFFF3F4F6)
-private val WorkoutDisabledFieldColor = Color(0xFFF7F7F8)
-private val WorkoutDividerColor = Color(0xFFE5E7EB)
-private val WorkoutProgressTrackColor = Color(0xFFE5E7EB)
+
+@Composable
+private fun WorkoutChip(
+    containerColor: Color,
+    contentColor: Color,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Row(
+            modifier = Modifier
+                .height(28.dp)
+                .padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content,
+        )
+    }
+}
 
 @Composable
 private fun AddSetButtonContent() {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .background(MaterialTheme.colorScheme.primary, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "+",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-        Text("Add set", fontWeight = FontWeight.SemiBold)
+        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+        Text("Add set", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -444,7 +494,13 @@ private fun WorkoutSetRow(
     onCompletionChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = if (completed) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                shape = RoundedCornerShape(12.dp),
+            )
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SetColumn {
@@ -497,27 +553,37 @@ private fun WorkoutNumberField(
     keyboardType: KeyboardType,
     enabled: Boolean,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    val fieldShape = RoundedCornerShape(10.dp)
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth().height(36.dp),
+        modifier = Modifier.fillMaxWidth().height(40.dp),
         enabled = enabled,
         singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium.copy(
-            color = if (enabled) MaterialTheme.colorScheme.onSurface
-            else MaterialTheme.colorScheme.onSurfaceVariant,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
         ),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        interactionSource = interactionSource,
+        cursorBrush = SolidColor(OGymTheme.colors.accent),
         decorationBox = { innerTextField ->
+            val fieldModifier = when {
+                !enabled -> Modifier
+                focused -> Modifier
+                    .background(MaterialTheme.colorScheme.surface, fieldShape)
+                    .border(2.dp, OGymTheme.colors.accent, fieldShape)
+                else -> Modifier
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest, fieldShape)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, fieldShape)
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        color = if (enabled) WorkoutFieldColor else WorkoutDisabledFieldColor,
-                        shape = RoundedCornerShape(10.dp),
-                    )
+                    .then(fieldModifier)
                     .padding(horizontal = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -533,34 +599,33 @@ private fun CompletionButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val borderColor = when {
-        checked -> MaterialTheme.colorScheme.primary
-        enabled -> MaterialTheme.colorScheme.outline
-        else -> MaterialTheme.colorScheme.outlineVariant
-    }
+    val buttonShape = RoundedCornerShape(12.dp)
+    val uncheckedColor = if (enabled) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant
     Box(
         modifier = Modifier
-            .size(38.dp)
-            .clickable(enabled = enabled, onClick = onClick),
+            .size(44.dp)
+            .clickable(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = if (checked) "Set done" else "Mark set as done" },
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(28.dp)
-                .background(
-                    color = if (checked) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    shape = CircleShape,
-                )
-                .border(width = 2.dp, color = borderColor, shape = CircleShape),
+                .size(40.dp)
+                .then(
+                    if (checked) {
+                        Modifier.background(MaterialTheme.colorScheme.primary, buttonShape)
+                    } else {
+                        Modifier.border(2.dp, uncheckedColor, buttonShape)
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
-            if (checked) {
-                Text(
-                    text = "✓",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = if (checked) MaterialTheme.colorScheme.onPrimary else uncheckedColor,
+            )
         }
     }
 }
