@@ -49,6 +49,7 @@ import com.example.ogym_kmp.feature.workout.presentation.component.SwipeToDelete
 fun TemplateEditorScreen(
     viewModel: TemplateEditorViewModel,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
     onClose: (Boolean) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -158,7 +159,12 @@ fun TemplateEditorScreen(
     LazyColumn(
         modifier = Modifier.weight(1f),
         state = listState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 16.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 0.dp,
+            bottom = 16.dp + contentPadding.calculateBottomPadding(),
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         state.error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }

@@ -187,7 +187,8 @@ fun App() {
             }
 
             // The floating bottom bar draws over the content, so only the top padding is applied here;
-            // the bottom padding is given to the scrollable content and added to the sheet peek height.
+            // the bottom padding goes to the scrollable content (Home, Profile and the sheets), so they
+            // scroll behind the bar, and is added to the sheet peek height.
             val bottomBarPadding = innerPadding.calculateBottomPadding()
 
             BottomSheetScaffold(
@@ -214,7 +215,7 @@ fun App() {
 
                             ActiveWorkoutScreen(
                                 viewModel = activeWorkoutViewModel,
-                                modifier = Modifier.padding(bottom = bottomBarPadding),
+                                contentPadding = PaddingValues(bottom = bottomBarPadding),
                                 onClosed = { sessionViewModel.onWorkoutEnded() },
                                 onFinished = {
                                     sessionViewModel.onWorkoutEnded()
@@ -235,7 +236,7 @@ fun App() {
 
                             TemplateEditorScreen(
                                 viewModel = editorViewModel,
-                                modifier = Modifier.padding(bottom = bottomBarPadding),
+                                contentPadding = PaddingValues(bottom = bottomBarPadding),
                             ) { saved ->
                                 closeTemplateEditor()
                                 if (saved) homeViewModel.onAction(
