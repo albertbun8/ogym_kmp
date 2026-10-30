@@ -25,10 +25,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +59,8 @@ import com.example.ogym_kmp.feature.workout.presentation.template.TemplateEditor
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.uuid.Uuid
+import androidx.compose.ui.backhandler.BackHandler
+import kotlinx.coroutines.launch
 
 private enum class MainDestination(val label: String, val route: Any) {
     Home("Home", HomeRoute),
@@ -70,7 +74,7 @@ private sealed interface AppSheet {
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 fun App() {
     val homeViewModel = koinViewModel<HomeViewModel>()
     val sessionViewModel = koinViewModel<ActiveWorkoutSessionViewModel>()
@@ -95,6 +99,11 @@ fun App() {
                 editedTemplateId = templateId
                 templateEditorOpen = true
             }
+        }
+
+        val closeTemplateEditor:() -> Unit = {
+            editedTemplateId = null
+            templateEditorOpen = false
         }
 
         val startWorkout: (draft: ActiveWorkoutDraft) -> Unit = { draft ->
@@ -164,6 +173,14 @@ fun App() {
                                     parametersOf(sheet.activeWorkoutDraft)
                                 }
 
+                            val scope = rememberCoroutineScope()
+
+                            BackHandler(enabled = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded){
+                                scope.launch {
+                                    scaffoldState.bottomSheetState.partialExpand()
+                                }
+                            }
+
                             ActiveWorkoutScreen(
                                 viewModel = activeWorkoutViewModel,
                                 onClosed = { sessionViewModel.onWorkoutEnded() },
@@ -180,9 +197,12 @@ fun App() {
                                     parametersOf(sheet.templateId?.let(Uuid::parse))
                                 }
 
+                            BackHandler {
+                                closeTemplateEditor()
+                            }
+
                             TemplateEditorScreen(viewModel = editorViewModel) { saved ->
-                                templateEditorOpen = false
-                                editedTemplateId = null
+                                closeTemplateEditor()
                                 if (saved) homeViewModel.onAction(
                                     com.example.ogym_kmp.feature.workout.presentation.home.HomeUiAction.RetryTemplates,
                                 )
