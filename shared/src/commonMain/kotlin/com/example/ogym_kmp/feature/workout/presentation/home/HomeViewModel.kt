@@ -67,6 +67,7 @@ class HomeViewModel(
             is HomeUiAction.EditTemplate -> loadedTemplates[action.id]?.let { template ->
                 viewModelScope.launch { _events.send(HomeEvent.EditTemplate(template)) }
             }
+
             is HomeUiAction.DeleteTemplate -> deleteTemplate(action.id)
             is HomeUiAction.SelectTemplate -> startWorkoutFromTemplate(action.id)
             is HomeUiAction.SelectSession -> toggleSession(action.id)
@@ -96,20 +97,32 @@ class HomeViewModel(
         }
     }
 
-    private fun startEmptyWorkout(){
-        if(startWorkoutJob?.isActive == true) return
+    private fun startEmptyWorkout() {
+        if (startWorkoutJob?.isActive == true) return
         startWorkoutJob = viewModelScope.launch {
-            val draft = startEmptyWorkout(
-                id = Uuid.random(),
-                startedAt = currentInstant(),
-                localDate = currentDateIso(),
-            )
-            _events.send(HomeEvent.WorkoutStarted(draft))
+            _uiState.update { it.copy(workoutStartError = null) }
+            try {
+                val draft = startEmptyWorkout(
+                    id = Uuid.random(),
+                    startedAt = currentInstant(),
+                    localDate = currentDateIso(),
+                )
+                _events.send(HomeEvent.WorkoutStarted(draft))
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        workoutStartError = exception.message
+                            ?: "Unable to start the empty workout.",
+                    )
+                }
+            }
         }
     }
 
     private fun startWorkoutFromTemplate(templateId: Uuid) {
-        if(startWorkoutJob?.isActive == true) return
+        if (startWorkoutJob?.isActive == true) return
         startWorkoutJob = viewModelScope.launch {
             _uiState.update { it.copy(workoutStartError = null) }
             try {
@@ -145,7 +158,11 @@ class HomeViewModel(
                 throw exception
             } catch (exception: Exception) {
                 _uiState.update {
-                    it.copy(templates = Loadable.Error(exception.message ?: "Unable to load templates."))
+                    it.copy(
+                        templates = Loadable.Error(
+                            exception.message ?: "Unable to load templates."
+                        )
+                    )
                 }
             }
         }
@@ -155,13 +172,18 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(sessions = Loadable.Loading) }
             try {
-                val sessions = getWorkoutSessions().sortedByDescending { it.startedAt }.map(WorkoutSession::toUi)
+                val sessions = getWorkoutSessions().sortedByDescending { it.startedAt }
+                    .map(WorkoutSession::toUi)
                 _uiState.update { it.copy(sessions = Loadable.Data(sessions)) }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 _uiState.update {
-                    it.copy(sessions = Loadable.Error(exception.message ?: "Unable to load history."))
+                    it.copy(
+                        sessions = Loadable.Error(
+                            exception.message ?: "Unable to load history."
+                        )
+                    )
                 }
             }
         }
@@ -194,9 +216,12 @@ private fun WorkoutSession.toUi(): WorkoutSessionItemUi {
         durationLabel = durationMinutes?.let { "$it min" },
         exerciseCount = exercises.size,
         completedSetCount = exercises.sumOf { exercise -> exercise.sets.count { it.completed } },
-        dateLabel = "${isoDate.substring(5, 7).toMonthName()} ${isoDate.substring(8, 10).trimStart('0')}, ${isoDate.substring(0, 4)}",
+        dateLabel = "${isoDate.substring(5, 7).toMonthName()} ${
+            isoDate.substring(8, 10).trimStart('0')
+        }, ${isoDate.substring(0, 4)}",
         exercises = exercises.sortedBy { it.positionInWorkout }.map { exercise ->
-            val completedSets = exercise.sets.filter { it.completed }.sortedBy { it.positionInExercise }
+            val completedSets =
+                exercise.sets.filter { it.completed }.sortedBy { it.positionInExercise }
             val repetitions = completedSets.map { it.reps }
             WorkoutHistoryExerciseUi(
                 name = exercise.exerciseName,
