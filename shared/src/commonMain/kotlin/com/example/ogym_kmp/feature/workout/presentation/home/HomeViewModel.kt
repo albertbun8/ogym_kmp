@@ -14,6 +14,7 @@ import com.example.ogym_kmp.feature.workout.domain.usecase.StartWorkoutFromTempl
 import com.example.ogym_kmp.feature.workout.domain.usecase.DeleteWorkoutTemplate
 import com.example.ogym_kmp.feature.exercise.domain.usecase.GetExercises
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,6 +34,7 @@ class HomeViewModel(
     private val deleteWorkoutTemplate: DeleteWorkoutTemplate,
 ) : ViewModel() {
     private var loadedTemplates: Map<Uuid, WorkoutTemplate> = emptyMap()
+    private var startWorkoutJob: Job? = null
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private val _events = Channel<HomeEvent>(Channel.BUFFERED)
@@ -94,8 +96,21 @@ class HomeViewModel(
         }
     }
 
+    private fun startEmptyWorkout(){
+        if(startWorkoutJob?.isActive == true) return
+        startWorkoutJob = viewModelScope.launch {
+            val draft = startEmptyWorkout(
+                id = Uuid.random(),
+                startedAt = currentInstant(),
+                localDate = currentDateIso(),
+            )
+            _events.send(HomeEvent.WorkoutStarted(draft))
+        }
+    }
+
     private fun startWorkoutFromTemplate(templateId: Uuid) {
-        viewModelScope.launch {
+        if(startWorkoutJob?.isActive == true) return
+        startWorkoutJob = viewModelScope.launch {
             _uiState.update { it.copy(workoutStartError = null) }
             try {
                 val draft = startWorkoutFromTemplate(
@@ -117,18 +132,6 @@ class HomeViewModel(
 
     fun refreshSessions() {
         loadSessions()
-    }
-
-    @OptIn(ExperimentalUuidApi::class)
-    private fun startEmptyWorkout() {
-        viewModelScope.launch {
-            val draft = startEmptyWorkout(
-                id = Uuid.random(),
-                startedAt = currentInstant(),
-                localDate = currentDateIso(),
-            )
-            _events.send(HomeEvent.WorkoutStarted(draft))
-        }
     }
 
     private fun loadTemplates() {
