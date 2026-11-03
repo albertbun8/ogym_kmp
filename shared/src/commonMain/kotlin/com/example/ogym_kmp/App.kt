@@ -114,7 +114,14 @@ fun App() {
                 AppSheet.None -> null
             }
             if (message != null) {
-                scope.launch { snackbarHostState.showSnackbar(message) }
+                if (snackbarHostState.currentSnackbarData == null) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = message,
+                            withDismissAction = true
+                        )
+                    }
+                }
             }
         }
 
