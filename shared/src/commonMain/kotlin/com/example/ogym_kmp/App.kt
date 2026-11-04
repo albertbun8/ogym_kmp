@@ -26,7 +26,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -177,9 +177,8 @@ fun App() {
             val currentSheet by rememberUpdatedState(sheet)
 
             val scaffoldState = rememberBottomSheetScaffoldState(
-                bottomSheetState = rememberStandardBottomSheetState(
+                bottomSheetState = rememberBottomSheetState(
                     initialValue = SheetValue.Hidden,
-                    skipHiddenState = false,
                     confirmValueChange = { newValue ->
                         newValue != SheetValue.Hidden || currentSheet == AppSheet.None
                     },
