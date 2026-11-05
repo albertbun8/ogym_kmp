@@ -26,7 +26,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,9 +37,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +48,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBar
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBarItem
 import com.example.ogym_kmp.core.designsystem.component.OGymTopBar
@@ -84,7 +85,7 @@ private sealed interface AppSheet {
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 fun App() {
     val homeViewModel = koinViewModel<HomeViewModel>()
     val sessionViewModel = koinViewModel<ActiveWorkoutSessionViewModel>()
@@ -177,9 +178,8 @@ fun App() {
             val currentSheet by rememberUpdatedState(sheet)
 
             val scaffoldState = rememberBottomSheetScaffoldState(
-                bottomSheetState = rememberStandardBottomSheetState(
+                bottomSheetState = rememberBottomSheetState(
                     initialValue = SheetValue.Hidden,
-                    skipHiddenState = false,
                     confirmValueChange = { newValue ->
                         newValue != SheetValue.Hidden || currentSheet == AppSheet.None
                     },
@@ -214,11 +214,15 @@ fun App() {
                                     parametersOf(sheet.activeWorkoutDraft)
                                 }
 
-                            BackHandler(enabled = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
-                                scope.launch {
-                                    scaffoldState.bottomSheetState.partialExpand()
-                                }
-                            }
+                            NavigationBackHandler(
+                                state = rememberNavigationEventState(NavigationEventInfo.None),
+                                isBackEnabled = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded,
+                                onBackCompleted = {
+                                    scope.launch {
+                                        scaffoldState.bottomSheetState.partialExpand()
+                                    }
+                                },
+                            )
 
                             ActiveWorkoutScreen(
                                 viewModel = activeWorkoutViewModel,
@@ -237,9 +241,10 @@ fun App() {
                                     parametersOf(sheet.templateId?.let(Uuid::parse))
                                 }
 
-                            BackHandler {
-                                closeTemplateEditor()
-                            }
+                            NavigationBackHandler(
+                                state = rememberNavigationEventState(NavigationEventInfo.None),
+                                onBackCompleted = { closeTemplateEditor() },
+                            )
 
                             TemplateEditorScreen(
                                 viewModel = editorViewModel,
