@@ -12,10 +12,10 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
-    val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode.stateIn(
+    val themeMode: StateFlow<ThemeMode?> = settingsRepository.themeMode.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = ThemeMode.SYSTEM
+        initialValue = null
     )
 
     fun onThemeModeSelected(mode: ThemeMode) {

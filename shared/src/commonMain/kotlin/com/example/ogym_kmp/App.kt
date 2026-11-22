@@ -100,8 +100,9 @@ fun App() {
     var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
     var editedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
     if (sessionState is ActiveWorkoutSessionUiState.Loading) return
+    val themeMode = themeState ?: return
 
-    val darkTheme = when(themeState) {
+    val darkTheme = when(themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
