@@ -3,6 +3,7 @@ package com.example.ogym_kmp
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +58,8 @@ import com.example.ogym_kmp.core.designsystem.component.OGymTopBar
 import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import com.example.ogym_kmp.core.navigation.HomeRoute
 import com.example.ogym_kmp.core.navigation.ProfileRoute
+import com.example.ogym_kmp.feature.settings.domain.model.ThemeMode
+import com.example.ogym_kmp.feature.settings.presentation.SettingsViewModel
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
 import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.presentation.active.ActiveWorkoutScreen
@@ -89,13 +92,20 @@ private sealed interface AppSheet {
 fun App() {
     val homeViewModel = koinViewModel<HomeViewModel>()
     val sessionViewModel = koinViewModel<ActiveWorkoutSessionViewModel>()
+    val settingsViewModel = koinViewModel<SettingsViewModel>()
 
     val navController = rememberNavController()
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
+    val themeState by settingsViewModel.themeMode.collectAsStateWithLifecycle()
     var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
     var editedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
-    var darkTheme by rememberSaveable { mutableStateOf(false) }
     if (sessionState is ActiveWorkoutSessionUiState.Loading) return
+
+    val darkTheme = when(themeState) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
 
     OGymTheme(darkTheme = darkTheme) {
         val workout = (sessionState as? ActiveWorkoutSessionUiState.Active)?.workout
@@ -269,7 +279,10 @@ fun App() {
                     canStartWorkout = sheet == AppSheet.None,
                     onStartBlocked = showSheetBlockedMessage,
                     darkTheme = darkTheme,
-                    onDarkThemeChanged = { darkTheme = it },
+                    onDarkThemeChanged = {
+                        if(it)settingsViewModel.onThemeModeSelected(ThemeMode.DARK)
+                        else settingsViewModel.onThemeModeSelected(ThemeMode.LIGHT)
+                    },
                     contentPadding = PaddingValues(bottom = bottomBarPadding),
                 )
             }
