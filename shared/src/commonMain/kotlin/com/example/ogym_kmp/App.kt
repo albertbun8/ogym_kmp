@@ -3,6 +3,7 @@ package com.example.ogym_kmp
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,11 +20,11 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberBottomSheetState
@@ -57,6 +58,8 @@ import com.example.ogym_kmp.core.designsystem.component.OGymTopBar
 import com.example.ogym_kmp.core.designsystem.theme.OGymTheme
 import com.example.ogym_kmp.core.navigation.HomeRoute
 import com.example.ogym_kmp.core.navigation.ProfileRoute
+import com.example.ogym_kmp.feature.settings.domain.model.ThemeMode
+import com.example.ogym_kmp.feature.settings.presentation.SettingsViewModel
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
 import com.example.ogym_kmp.feature.workout.domain.model.WorkoutTemplate
 import com.example.ogym_kmp.feature.workout.presentation.active.ActiveWorkoutScreen
@@ -89,13 +92,21 @@ private sealed interface AppSheet {
 fun App() {
     val homeViewModel = koinViewModel<HomeViewModel>()
     val sessionViewModel = koinViewModel<ActiveWorkoutSessionViewModel>()
+    val settingsViewModel = koinViewModel<SettingsViewModel>()
 
     val navController = rememberNavController()
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
+    val themeState by settingsViewModel.themeMode.collectAsStateWithLifecycle()
     var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
     var editedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
-    var darkTheme by rememberSaveable { mutableStateOf(false) }
     if (sessionState is ActiveWorkoutSessionUiState.Loading) return
+    val themeMode = themeState ?: return
+
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
 
     OGymTheme(darkTheme = darkTheme) {
         val workout = (sessionState as? ActiveWorkoutSessionUiState.Active)?.workout
@@ -268,8 +279,8 @@ fun App() {
                     onEditTemplate = { openTemplateEditor(it.id.toString()) },
                     canStartWorkout = sheet == AppSheet.None,
                     onStartBlocked = showSheetBlockedMessage,
-                    darkTheme = darkTheme,
-                    onDarkThemeChanged = { darkTheme = it },
+                    themeMode = themeMode,
+                    onThemeSelected = { settingsViewModel.onThemeModeSelected(it) },
                     contentPadding = PaddingValues(bottom = bottomBarPadding),
                 )
             }
@@ -300,8 +311,8 @@ private fun MainContent(
     onEditTemplate: (WorkoutTemplate) -> Unit,
     canStartWorkout: Boolean,
     onStartBlocked: () -> Unit,
-    darkTheme: Boolean,
-    onDarkThemeChanged: (Boolean) -> Unit,
+    themeMode: ThemeMode,
+    onThemeSelected: (ThemeMode) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -326,8 +337,8 @@ private fun MainContent(
         }
         composable<ProfileRoute> {
             ProfilePlaceholder(
-                darkTheme = darkTheme,
-                onDarkThemeChanged = onDarkThemeChanged,
+                themeMode = themeMode,
+                onThemeSelected = onThemeSelected,
                 modifier = Modifier.padding(contentPadding),
             )
         }
@@ -337,8 +348,8 @@ private fun MainContent(
 
 @Composable
 private fun ProfilePlaceholder(
-    darkTheme: Boolean,
-    onDarkThemeChanged: (Boolean) -> Unit,
+    themeMode: ThemeMode,
+    onThemeSelected: (ThemeMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -353,11 +364,24 @@ private fun ProfilePlaceholder(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Dark mode")
-            Switch(
-                checked = darkTheme,
-                onCheckedChange = onDarkThemeChanged,
-            )
+            Text("Theme")
+            ThemeMode.entries.forEach { mode ->
+                val label = when (mode) {
+                    ThemeMode.SYSTEM -> "System"
+                    ThemeMode.LIGHT -> "Light"
+                    ThemeMode.DARK -> "Dark"
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = themeMode == mode,
+                        onClick = {
+                            onThemeSelected(mode)
+                        }
+                    )
+                    Text(label)
+                }
+            }
         }
     }
 }
