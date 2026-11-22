@@ -279,11 +279,8 @@ fun App() {
                     onEditTemplate = { openTemplateEditor(it.id.toString()) },
                     canStartWorkout = sheet == AppSheet.None,
                     onStartBlocked = showSheetBlockedMessage,
-                    darkTheme = darkTheme,
-                    onDarkThemeChanged = {
-                        if(it)settingsViewModel.onThemeModeSelected(ThemeMode.DARK)
-                        else settingsViewModel.onThemeModeSelected(ThemeMode.LIGHT)
-                    },
+                    themeMode = themeMode,
+                    onThemeSelected = { settingsViewModel.onThemeModeSelected(it) },
                     contentPadding = PaddingValues(bottom = bottomBarPadding),
                 )
             }
@@ -314,8 +311,8 @@ private fun MainContent(
     onEditTemplate: (WorkoutTemplate) -> Unit,
     canStartWorkout: Boolean,
     onStartBlocked: () -> Unit,
-    darkTheme: Boolean,
-    onDarkThemeChanged: (Boolean) -> Unit,
+    themeMode: ThemeMode,
+    onThemeSelected: (ThemeMode) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -340,8 +337,8 @@ private fun MainContent(
         }
         composable<ProfileRoute> {
             ProfilePlaceholder(
-                darkTheme = darkTheme,
-                onDarkThemeChanged = onDarkThemeChanged,
+                themeMode = themeMode,
+                onThemeSelected = onThemeSelected,
                 modifier = Modifier.padding(contentPadding),
             )
         }
@@ -351,8 +348,8 @@ private fun MainContent(
 
 @Composable
 private fun ProfilePlaceholder(
-    darkTheme: Boolean,
-    onDarkThemeChanged: (Boolean) -> Unit,
+    themeMode: ThemeMode,
+    onThemeSelected: (ThemeMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -369,8 +366,8 @@ private fun ProfilePlaceholder(
         ) {
             Text("Dark mode")
             Switch(
-                checked = darkTheme,
-                onCheckedChange = onDarkThemeChanged,
+                checked = themeMode == ThemeMode.DARK,
+                onCheckedChange = { onThemeSelected(if (it) ThemeMode.DARK else ThemeMode.LIGHT ) } ,
             )
         }
     }
