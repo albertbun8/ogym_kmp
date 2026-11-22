@@ -70,7 +70,7 @@ kotlin {
             implementation(libs.koin.composeViewmodel)
             implementation(libs.androidx.navigation.compose)
             implementation(libs.androidx.navigationevent.compose)
-            implementation(libs.androidx.datastore.preferences.core)
+            api(libs.androidx.datastore.preferences.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
