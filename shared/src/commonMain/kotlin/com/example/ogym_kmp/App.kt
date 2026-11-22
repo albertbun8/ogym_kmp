@@ -20,11 +20,11 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberBottomSheetState
@@ -102,7 +102,7 @@ fun App() {
     if (sessionState is ActiveWorkoutSessionUiState.Loading) return
     val themeMode = themeState ?: return
 
-    val darkTheme = when(themeMode) {
+    val darkTheme = when (themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
@@ -364,11 +364,24 @@ private fun ProfilePlaceholder(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Dark mode")
-            Switch(
-                checked = themeMode == ThemeMode.DARK,
-                onCheckedChange = { onThemeSelected(if (it) ThemeMode.DARK else ThemeMode.LIGHT ) } ,
-            )
+            Text("Theme")
+            ThemeMode.entries.forEach { mode ->
+                val label = when (mode) {
+                    ThemeMode.SYSTEM -> "System"
+                    ThemeMode.LIGHT -> "Light"
+                    ThemeMode.DARK -> "Dark"
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = themeMode == mode,
+                        onClick = {
+                            onThemeSelected(mode)
+                        }
+                    )
+                    Text(label)
+                }
+            }
         }
     }
 }
