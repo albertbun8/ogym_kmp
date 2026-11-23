@@ -52,6 +52,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import com.example.ogym_kmp.core.common.model.WeightUnit
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBar
 import com.example.ogym_kmp.core.designsystem.component.OGymBottomBarItem
 import com.example.ogym_kmp.core.designsystem.component.OGymTopBar
@@ -97,6 +98,7 @@ fun App() {
     val navController = rememberNavController()
     val sessionState by sessionViewModel.uiState.collectAsStateWithLifecycle()
     val themeState by settingsViewModel.themeMode.collectAsStateWithLifecycle()
+    val weightUnit by settingsViewModel.weightUnit.collectAsStateWithLifecycle()
     var templateEditorOpen by rememberSaveable { mutableStateOf(false) }
     var editedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
     if (sessionState is ActiveWorkoutSessionUiState.Loading) return
@@ -281,6 +283,8 @@ fun App() {
                     onStartBlocked = showSheetBlockedMessage,
                     themeMode = themeMode,
                     onThemeSelected = { settingsViewModel.onThemeModeSelected(it) },
+                    weightUnit = weightUnit,
+                    onWeightUnitSelected = { settingsViewModel.onWeightUnitSelected(it) },
                     contentPadding = PaddingValues(bottom = bottomBarPadding),
                 )
             }
@@ -313,6 +317,8 @@ private fun MainContent(
     onStartBlocked: () -> Unit,
     themeMode: ThemeMode,
     onThemeSelected: (ThemeMode) -> Unit,
+    weightUnit: WeightUnit,
+    onWeightUnitSelected: (WeightUnit) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -339,6 +345,8 @@ private fun MainContent(
             ProfilePlaceholder(
                 themeMode = themeMode,
                 onThemeSelected = onThemeSelected,
+                weightUnit = weightUnit,
+                onWeightUnitSelected = onWeightUnitSelected,
                 modifier = Modifier.padding(contentPadding),
             )
         }
@@ -350,6 +358,8 @@ private fun MainContent(
 private fun ProfilePlaceholder(
     themeMode: ThemeMode,
     onThemeSelected: (ThemeMode) -> Unit,
+    weightUnit: WeightUnit,
+    onWeightUnitSelected: (WeightUnit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -377,6 +387,30 @@ private fun ProfilePlaceholder(
                         selected = themeMode == mode,
                         onClick = {
                             onThemeSelected(mode)
+                        }
+                    )
+                    Text(label)
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ){
+            Text("Weight Unit")
+            WeightUnit.entries.forEach { unit ->
+                val label = when (unit) {
+                    WeightUnit.KG -> "kg"
+                    WeightUnit.LB -> "lbs"
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = weightUnit == unit,
+                        onClick = {
+                            onWeightUnitSelected(unit)
                         }
                     )
                     Text(label)
