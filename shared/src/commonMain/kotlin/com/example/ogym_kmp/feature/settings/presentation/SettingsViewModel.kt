@@ -22,7 +22,7 @@ class SettingsViewModel(
     val weightUnit: StateFlow<WeightUnit> = settingsRepository.weightUnit.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = WeightUnit.KG
+        initialValue = WeightUnit.LB
     )
 
     fun onThemeModeSelected(mode: ThemeMode) {

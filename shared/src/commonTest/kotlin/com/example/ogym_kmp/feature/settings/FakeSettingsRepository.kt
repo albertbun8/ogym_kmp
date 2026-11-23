@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeSettingsRepository (
     initialThemeMode: ThemeMode = ThemeMode.SYSTEM,
-    initialWeightUnit: WeightUnit = WeightUnit.KG
+    initialWeightUnit: WeightUnit = WeightUnit.LB
 ) : SettingsRepository {
     private val _themeMode = MutableStateFlow(initialThemeMode)
     override val themeMode: Flow<ThemeMode> = _themeMode

@@ -56,23 +56,23 @@ class SettingsViewModelTest {
 
     @Test
     fun weightUnit_emitsSavedWeightUnit() = runTest {
-        val fakeRepo = FakeSettingsRepository(initialWeightUnit = WeightUnit.LB)
-        val viewModel = SettingsViewModel(fakeRepo)
-
-        viewModel.weightUnit.test {
-            assertEquals(WeightUnit.LB, awaitItem())
-        }
-    }
-
-    @Test
-    fun onWeightUnitSelected_updatesWeightUnit() = runTest {
         val fakeRepo = FakeSettingsRepository(initialWeightUnit = WeightUnit.KG)
         val viewModel = SettingsViewModel(fakeRepo)
 
         viewModel.weightUnit.test {
             assertEquals(WeightUnit.KG, awaitItem())
-            viewModel.onWeightUnitSelected(WeightUnit.LB)
+        }
+    }
+
+    @Test
+    fun onWeightUnitSelected_updatesWeightUnit() = runTest {
+        val fakeRepo = FakeSettingsRepository(initialWeightUnit = WeightUnit.LB)
+        val viewModel = SettingsViewModel(fakeRepo)
+
+        viewModel.weightUnit.test {
             assertEquals(WeightUnit.LB, awaitItem())
+            viewModel.onWeightUnitSelected(WeightUnit.KG)
+            assertEquals(WeightUnit.KG, awaitItem())
         }
     }
 }

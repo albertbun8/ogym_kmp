@@ -29,7 +29,7 @@ class DataStoreSettingsRepository(
         val name = preferences[WEIGHT_UNIT_KEY]
         WeightUnit.entries.find {
             it.name == name
-        } ?: WeightUnit.KG
+        } ?: WeightUnit.LB
     }
 
     override suspend fun setThemeMode(mode: ThemeMode) {
