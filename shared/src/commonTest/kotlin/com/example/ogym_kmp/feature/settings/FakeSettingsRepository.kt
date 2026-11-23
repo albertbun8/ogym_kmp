@@ -1,0 +1,18 @@
+package com.example.ogym_kmp.feature.settings
+
+import com.example.ogym_kmp.feature.settings.domain.model.ThemeMode
+import com.example.ogym_kmp.feature.settings.domain.repository.SettingsRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+
+class FakeSettingsRepository (
+    initialThemeMode: ThemeMode = ThemeMode.SYSTEM
+) : SettingsRepository {
+    private val _themeMode = MutableStateFlow(initialThemeMode)
+
+    override val themeMode: Flow<ThemeMode> = _themeMode
+
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+    }
+}
