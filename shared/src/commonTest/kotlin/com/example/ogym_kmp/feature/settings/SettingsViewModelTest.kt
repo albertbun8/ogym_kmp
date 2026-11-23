@@ -48,11 +48,7 @@ class SettingsViewModelTest {
 
         viewModel.themeMode.test {
             assertEquals(ThemeMode.DARK, awaitItem())
-        }
-
-        viewModel.onThemeModeSelected(ThemeMode.LIGHT)
-
-        viewModel.themeMode.test {
+            viewModel.onThemeModeSelected(ThemeMode.LIGHT)
             assertEquals(ThemeMode.LIGHT, awaitItem())
         }
     }
