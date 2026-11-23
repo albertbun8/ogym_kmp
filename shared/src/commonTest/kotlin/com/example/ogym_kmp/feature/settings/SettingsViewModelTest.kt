@@ -1,6 +1,7 @@
 package com.example.ogym_kmp.feature.settings
 
 import app.cash.turbine.test
+import com.example.ogym_kmp.core.common.model.WeightUnit
 import com.example.ogym_kmp.feature.settings.domain.model.ThemeMode
 import com.example.ogym_kmp.feature.settings.presentation.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +51,28 @@ class SettingsViewModelTest {
             assertEquals(ThemeMode.DARK, awaitItem())
             viewModel.onThemeModeSelected(ThemeMode.LIGHT)
             assertEquals(ThemeMode.LIGHT, awaitItem())
+        }
+    }
+
+    @Test
+    fun weightUnit_emitsSavedWeightUnit() = runTest {
+        val fakeRepo = FakeSettingsRepository(initialWeightUnit = WeightUnit.LB)
+        val viewModel = SettingsViewModel(fakeRepo)
+
+        viewModel.weightUnit.test {
+            assertEquals(WeightUnit.LB, awaitItem())
+        }
+    }
+
+    @Test
+    fun onWeightUnitSelected_updatesWeightUnit() = runTest {
+        val fakeRepo = FakeSettingsRepository(initialWeightUnit = WeightUnit.KG)
+        val viewModel = SettingsViewModel(fakeRepo)
+
+        viewModel.weightUnit.test {
+            assertEquals(WeightUnit.KG, awaitItem())
+            viewModel.onWeightUnitSelected(WeightUnit.LB)
+            assertEquals(WeightUnit.LB, awaitItem())
         }
     }
 }
