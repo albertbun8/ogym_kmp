@@ -83,6 +83,7 @@ val workoutModule = module {
             get(),
             get(),
             get(),
+            get(),
             templateId = params.getOrNull()
         )
     }

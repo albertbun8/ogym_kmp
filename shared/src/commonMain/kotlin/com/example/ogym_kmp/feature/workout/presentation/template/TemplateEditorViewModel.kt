@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ogym_kmp.core.common.currentInstant
 import com.example.ogym_kmp.core.common.model.WeightUnit
+import com.example.ogym_kmp.core.preferences.WeightUnitPreferences
 import com.example.ogym_kmp.feature.exercise.domain.model.Exercise
 import com.example.ogym_kmp.feature.exercise.domain.usecase.GetExercises
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutExerciseDraft
@@ -18,8 +19,11 @@ import com.example.ogym_kmp.feature.workout.presentation.active.ExercisePickerSt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.uuid.ExperimentalUuidApi
@@ -59,6 +63,7 @@ class TemplateEditorViewModel(
     private val getWorkoutTemplate: GetWorkoutTemplate,
     private val createWorkoutTemplate: CreateWorkoutTemplate,
     private val updateWorkoutTemplate: UpdateWorkoutTemplate,
+    private val weightUnitPreferences: WeightUnitPreferences,
     private val templateId: Uuid? = null,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
@@ -70,6 +75,12 @@ class TemplateEditorViewModel(
     val uiState = _uiState.asStateFlow()
     private val _events = Channel<TemplateEditorEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+    private val preferredWeightUnit: StateFlow<WeightUnit> =
+        weightUnitPreferences.weightUnit.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = WeightUnit.LB,
+        )
 
     init {
         if (templateId != null) loadTemplate(templateId)
@@ -93,25 +104,29 @@ class TemplateEditorViewModel(
                 val exercisesById = getExercises().associateBy(Exercise::id)
                 _uiState.update { state ->
                     state.copy(
-                        exercises = template.exercises.sortedBy { it.positionInTemplate }.map { exercise ->
-                            ActiveWorkoutExerciseDraft(
-                                id = exercise.id,
-                                exerciseId = exercise.exerciseId,
-                                exerciseName = exercisesById[exercise.exerciseId]?.name ?: "Unknown exercise",
-                                positionInWorkout = exercise.positionInTemplate,
-                                muscleGroups = exercisesById[exercise.exerciseId]?.muscleGroups?.toSet().orEmpty(),
-                                sets = exercise.sets.sortedBy { it.positionInExercise }.map { set ->
-                                    ActiveWorkoutSetDraft(
-                                        id = set.id,
-                                        positionInExercise = set.positionInExercise,
-                                        reps = set.targetReps,
-                                        weight = set.targetWeight,
-                                        weightUnit = set.targetWeightUnit,
-                                        completed = false,
-                                    )
-                                },
-                            )
-                        },
+                        exercises = template.exercises.sortedBy { it.positionInTemplate }
+                            .map { exercise ->
+                                ActiveWorkoutExerciseDraft(
+                                    id = exercise.id,
+                                    exerciseId = exercise.exerciseId,
+                                    exerciseName = exercisesById[exercise.exerciseId]?.name
+                                        ?: "Unknown exercise",
+                                    positionInWorkout = exercise.positionInTemplate,
+                                    muscleGroups = exercisesById[exercise.exerciseId]?.muscleGroups?.toSet()
+                                        .orEmpty(),
+                                    sets = exercise.sets.sortedBy { it.positionInExercise }
+                                        .map { set ->
+                                            ActiveWorkoutSetDraft(
+                                                id = set.id,
+                                                positionInExercise = set.positionInExercise,
+                                                reps = set.targetReps,
+                                                weight = set.targetWeight,
+                                                weightUnit = set.targetWeightUnit,
+                                                completed = false,
+                                            )
+                                        },
+                                )
+                            },
                         name = template.name,
                         inputs = template.exercises.flatMap { it.sets }.associate { set ->
                             set.id to TemplateSetInputUi(
@@ -126,7 +141,10 @@ class TemplateEditorViewModel(
                 throw e
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(loadingTemplate = false, error = e.message ?: "Unable to load template.")
+                    it.copy(
+                        loadingTemplate = false,
+                        error = e.message ?: "Unable to load template."
+                    )
                 }
             }
         }
@@ -138,7 +156,11 @@ class TemplateEditorViewModel(
         TemplateEditorAction.ClosePicker -> _uiState.update { it.copy(pickerVisible = false) }
         is TemplateEditorAction.SelectExercise -> addExercise(action.exercise)
         is TemplateEditorAction.AddSet -> addSet(action.exerciseId)
-        is TemplateEditorAction.MoveExercise -> moveExercise(action.exerciseId, action.targetExerciseId)
+        is TemplateEditorAction.MoveExercise -> moveExercise(
+            action.exerciseId,
+            action.targetExerciseId
+        )
+
         is TemplateEditorAction.RemoveExercise -> removeExercise(action.exerciseId)
         is TemplateEditorAction.RemoveSet -> removeSet(action.setId)
         is TemplateEditorAction.ChangeWeight -> changeInput(action.setId, weight = action.value)
@@ -152,8 +174,17 @@ class TemplateEditorViewModel(
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(picker = ExercisePickerState.Data(getExercises())) }
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _uiState.update { it.copy(picker = ExercisePickerState.Error(e.message ?: "Unable to load exercises.")) } }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        picker = ExercisePickerState.Error(
+                            e.message ?: "Unable to load exercises."
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -185,7 +216,8 @@ class TemplateEditorViewModel(
                             currentExercise.sets.size,
                             newInput.reps.toIntOrNull() ?: 0,
                             newInput.weight.toDoubleOrNull() ?: 0.0,
-                            currentExercise.sets.lastOrNull()?.weightUnit ?: WeightUnit.LB,
+                            currentExercise.sets.lastOrNull()?.weightUnit
+                                ?: preferredWeightUnit.value,
                             false,
                         ),
                     ) else currentExercise
@@ -241,7 +273,12 @@ class TemplateEditorViewModel(
         if (reps != null && reps.any { !it.isDigit() }) return
         _uiState.update { state ->
             val old = state.inputs[setId] ?: TemplateSetInputUi()
-            state.copy(inputs = state.inputs + (setId to old.copy(weight = weight ?: old.weight, reps = reps ?: old.reps)))
+            state.copy(
+                inputs = state.inputs + (setId to old.copy(
+                    weight = weight ?: old.weight,
+                    reps = reps ?: old.reps
+                ))
+            )
         }
     }
 
@@ -274,8 +311,9 @@ class TemplateEditorViewModel(
                     updateWorkoutTemplate(input, currentInstant())
                 }
                 _events.send(TemplateEditorEvent.Saved)
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         saving = false,
@@ -291,4 +329,7 @@ class TemplateEditorViewModel(
     }
 }
 
-sealed interface TemplateEditorEvent { data object Closed : TemplateEditorEvent; data object Saved : TemplateEditorEvent }
+sealed interface TemplateEditorEvent {
+    data object Closed : TemplateEditorEvent;
+    data object Saved : TemplateEditorEvent
+}
