@@ -1,12 +1,14 @@
 package com.example.ogym_kmp.feature.workout.domain.usecase
 
 import com.example.ogym_kmp.core.common.model.WeightUnit
+import com.example.ogym_kmp.core.preferences.WeightUnitPreferences
 import com.example.ogym_kmp.feature.exercise.domain.repository.ExerciseRepository
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutExerciseDraft
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutSetDraft
 import com.example.ogym_kmp.feature.workout.domain.repository.ActiveWorkoutRepository
 import com.example.ogym_kmp.feature.workout.domain.repository.WorkoutTemplateRepository
+import kotlinx.coroutines.flow.first
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -15,6 +17,7 @@ class StartWorkoutFromTemplate(
     private val activeWorkoutRepository: ActiveWorkoutRepository,
     private val workoutTemplateRepository: WorkoutTemplateRepository,
     private val exerciseRepository: ExerciseRepository,
+    private val weightUnitPreferences: WeightUnitPreferences
 ) {
     @OptIn(ExperimentalUuidApi::class)
     suspend operator fun invoke(
@@ -27,6 +30,8 @@ class StartWorkoutFromTemplate(
             workoutTemplateRepository.getWorkoutTemplates().firstOrNull { it.id == templateId },
         ) { "The selected workout template no longer exists." }
         val exercisesById = exerciseRepository.getExercises().associateBy { it.id }
+
+        val preferredWeightUnit = weightUnitPreferences.weightUnit.first()
 
         val draft = ActiveWorkoutDraft(
             id = Uuid.random(),
@@ -59,12 +64,7 @@ class StartWorkoutFromTemplate(
                             },
                     )
                 },
-            preferredWeightUnit = template.exercises
-                .firstOrNull()
-                ?.sets
-                ?.firstOrNull()
-                ?.targetWeightUnit
-                ?: WeightUnit.LB,
+            preferredWeightUnit = preferredWeightUnit,
         )
 
         activeWorkoutRepository.saveActiveWorkout(draft)

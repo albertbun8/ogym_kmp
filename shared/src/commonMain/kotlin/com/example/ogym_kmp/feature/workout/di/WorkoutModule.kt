@@ -54,7 +54,7 @@ val workoutModule = module {
     factory { SetActiveWorkoutSetCompletion(get()) }
     factory { GetPreviousExercisePerformances(get()) }
     factory { FinishActiveWorkout(get(), get()) }
-    factory { StartWorkoutFromTemplate(get(), get(), get()) }
+    factory { StartWorkoutFromTemplate(get(), get(), get(), get()) }
     factory { CreateWorkoutTemplate(get()) }
     factory { UpdateWorkoutTemplate(get()) }
     factory { DeleteWorkoutTemplate(get()) }
