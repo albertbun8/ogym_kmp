@@ -1,134 +1,116 @@
 # OGym
 
-OGym is a learning project for practicing the end-to-end development of a mobile workout platform: architecture, Kotlin Multiplatform, Compose Multiplatform, HTTP communication, and a Spring Boot backend.
+OGym is a gym workout tracker that will grow into a **"Pinterest for workouts"**: a place to discover, save, follow and share workout templates.
 
-The priority is to understand and evolve each layer progressively, not to deliver the application as quickly as possible.
+- **Tracker first.** Planning, recording and reviewing workouts must be great on its own.
+- **Then discovery.** Users publish templates, browse them by goal, split, equipment or level, save them into collections, and copy them with attribution.
+- **Then social.** Follow, feed, comments and photos come once discovery works.
 
-The current foundation focuses on reliable personal workout tracking. The longer-term product direction is to help members of the same gym voluntarily plan workouts and find compatible training partners without exposing automatic location data. That community direction remains subject to product validation and is not part of the current implementation scope.
+Android comes first, iOS after.
 
-## Current status
+OGym is also a learning project for end-to-end mobile development: Kotlin Multiplatform, Compose Multiplatform, and a Spring Boot backend. The priority is to understand each layer and decision, not to ship as fast as possible.
 
-The current application shell has two main destinations:
+## Features
 
-- **Home**: start an empty workout or a workout from a template, create a template, and browse recent workout history;
-- **Profile**: currently a placeholder for the future user profile and preferences.
+The app has two main destinations.
 
-Currently:
+**Home**
+- Start an empty workout or a workout from a template.
+- Create, edit and delete workout templates.
+- Browse recent workout history and the current week.
 
-- workout templates are persisted in PostgreSQL through Spring Data JDBC;
-- exercises and workout sessions still use in-memory repositories;
-- the shared KMP module contains presentation, domain, data, networking, and SQLDelight persistence code;
-- Home loads templates and workout history and can create a workout template;
-- a workout can be started empty or from a template;
-- the active workout supports adding and reordering exercises, editing sets, completing sets, a rest timer, previous performance, and workout completion;
-- the active-workout draft is persisted locally with SQLDelight and restored after an application restart;
-- completed workouts are sent to the backend and then displayed in workout history;
-- Profile is still a placeholder;
-- workout sessions are not yet persisted in PostgreSQL;
-- exercise creation, editing, and deletion are not yet exposed by the mobile UI;
-- Spring Security, authentication, and user-owned resources are not yet implemented;
-- automated tests currently cover selected active-workout domain and repository behavior and PostgreSQL workout-template persistence.
+**Active workout** (a bottom sheet above the app, which can be collapsed without losing the workout)
+- Add and reorder exercises, edit and complete sets (weight and reps).
+- Rest timer, previous performance for each exercise, targeted muscle groups.
+- The draft is saved locally and restored after an app restart.
+- Finished workouts are sent to the backend and appear in the history.
 
-## Current priorities
+**Profile**
+- Theme setting: Light, Dark or System, persisted across restarts.
+- The full profile page is not built yet.
 
-Before implementing the local gym community capabilities, the project should complete and stabilize the personal workout foundation:
-
-1. persist workout sessions in PostgreSQL;
-2. complete workout history and workout details;
-3. implement authentication and assign resources to the authenticated user;
-4. introduce a minimal profile with privacy and discovery preferences;
-5. expand tests around the complete workout lifecycle and backend authorization;
-6. validate the local coordination flow with a small group from one gym before finalizing its domain model.
-
-The first candidate community slice is deliberately small:
-
-```text
-Select a gym
-    ↓
-Plan a visit with a time window and visibility
-    ↓
-Publish a structured partner request
-    ↓
-Receive and accept or decline a response
-    ↓
-Expire the visit and request automatically
-```
-
-Temporary chat, shared workouts, community programs, feeds, and real-time presence are later capabilities rather than prerequisites for this first experiment.
+### Not implemented yet
+- Workout sessions and exercises are kept **in memory** on the backend: they are lost when the server restarts. Only templates are stored in PostgreSQL.
+- No authentication or user accounts.
+- No custom exercises, full history screen or statistics.
+- The iOS app has not been compiled or run yet.
 
 ## Technology stack
 
-### Mobile
+### Mobile (`shared/`, `androidApp/`, `iosApp/`)
+- Kotlin Multiplatform, with Compose Multiplatform for a UI shared between Android and iOS
+- MVVM with unidirectional data flow: `ViewModel` + `StateFlow` + immutable UI state
+- Coroutines and Flow
+- Koin for dependency injection
+- Navigation Compose (type-safe routes)
+- Ktor Client and kotlinx.serialization
+- SQLDelight for the local database (active workout draft, cached data)
+- DataStore Preferences for settings
+- Tests: kotlin-test, kotlinx-coroutines-test, Turbine, hand-written fakes
 
-- Kotlin Multiplatform
-- Compose Multiplatform — shared UI for Android and iOS
-- MVVM
-- Coroutines, Flow et StateFlow
-- Ktor Client
-- Kotlin Serialization
-
-### Backend
-
-- Kotlin/JVM 21
-- Spring Boot
-- API REST
-- PostgreSQL, Spring Data JDBC, and Flyway for workout templates
-- Spring Security planned for a later stage
+### Backend (`backend/`)
+- Kotlin on JVM 21, Spring Boot, REST
+- PostgreSQL 17, Spring Data JDBC, Flyway migrations
+- Spring Security is planned with user accounts
 
 ## Architecture
 
-The mobile code is organized by feature with `presentation`, `domain`, and `data` layers.
+The mobile code is organized **by feature**, and each feature is split into layers:
+
+```text
+feature/<name>/
+├── presentation/   Compose screens, ViewModels, UI state
+├── domain/         models, repository interfaces, use cases (no Compose, Ktor or platform code)
+├── data/           repository implementations, API and database access
+└── di/             Koin module
+```
+
+Data flows in one direction:
 
 ```text
 Compose UI
     ↓ actions       ↑ UiState
 ViewModel
     ↓
-Use case
+Use case (when it adds business logic)
     ↓
-Repository (interface domain)
+Repository (domain interface)
     ↓
-RepositoryImpl (data)
-    ↓
-Ktor Client
-    ↓ HTTP/JSON
-Spring Boot Controller
-    ↓
-Service
-    ↓
-Repository backend
+Repository implementation (data)
+    ├── SQLDelight / DataStore (local)
+    └── Ktor Client ── HTTP/JSON ──▶ Spring Boot controller → service → repository → PostgreSQL
 ```
 
-Domain models do not depend on Compose, Ktor, Android, or iOS.
+Shared code that is not tied to a feature lives in `core/` (database, DataStore, design system, DI setup, navigation, network, preferences, common helpers).
+
+The backend follows the same feature split: `feature/<name>/{api, application, domain, infrastructure}`.
 
 ## Project structure
 
 ```text
 ogym/
-├── androidApp/       # Android entry point
-├── iosApp/           # iOS entry point and Xcode project
+├── androidApp/       # Android entry point (Application, Activity)
+├── iosApp/           # iOS entry point (SwiftUI host) and Xcode project
 ├── shared/
 │   └── src/
-│       ├── commonMain/   # Shared UI, presentation, domain, data, and networking
-│       ├── androidMain/  # Android-specific code when required
-│       └── iosMain/      # iOS-specific code when required
+│       ├── commonMain/      # Shared UI, presentation, domain, data
+│       ├── androidMain/     # Android-specific implementations
+│       ├── iosMain/         # iOS-specific implementations
+│       ├── commonTest/      # Shared unit tests and fakes
+│       ├── androidHostTest/ # Tests run on the JVM (e.g. Koin graph check)
+│       └── iosTest/
 ├── backend/          # Spring Boot application
 ├── gradle/           # Version catalog and Gradle Wrapper
+└── compose.yaml      # Local PostgreSQL
 ```
 
 ## Requirements
 
-- JDK 21;
-- Docker with Docker Compose for the local PostgreSQL database;
-- Android Studio with an Android SDK installed;
-- Xcode on macOS to build the iOS application;
-- no global Gradle installation is required because the project uses the Gradle Wrapper.
-
-Check the Java version:
-
-```bash
-java -version
-```
+- JDK 21
+- Docker with Docker Compose (local PostgreSQL)
+- Android Studio with an Android SDK
+- macOS with Xcode to build the iOS app
+- No global Gradle installation: the project uses the Gradle Wrapper
 
 ## Run the backend
 
@@ -139,27 +121,26 @@ docker compose up -d postgres
 ./gradlew :backend:bootRun
 ```
 
-The server listens on `http://localhost:8080`. It is bound to `0.0.0.0`, so devices on the local network can also access it through the host machine's local IP address.
+The server listens on port `8080` and is bound to `0.0.0.0`, so devices on the same local network can reach it through the host's local IP address. Stop it with `Ctrl+C`.
 
-Stop the server with `Ctrl+C`.
-
-Stop PostgreSQL while preserving its data with:
+Stop PostgreSQL while keeping its data:
 
 ```bash
 docker compose down
 ```
 
-The default local database connection can be overridden with `OGYM_DB_URL`,
-`OGYM_DB_USER`, and `OGYM_DB_PASSWORD`.
+The database connection can be overridden with `OGYM_DB_URL`, `OGYM_DB_USER` and `OGYM_DB_PASSWORD`.
 
-### Available endpoints
+### Endpoints
 
 ```http
-GET /exercises
-GET /workout-templates
-POST /workout-templates
-GET /workout-sessions
-POST /workout-sessions
+GET    /exercises
+GET    /workout-templates
+POST   /workout-templates
+PUT    /workout-templates/{id}
+DELETE /workout-templates/{id}
+GET    /workout-sessions
+POST   /workout-sessions
 ```
 
 Example:
@@ -168,28 +149,29 @@ Example:
 curl http://localhost:8080/workout-templates
 ```
 
-## Configure the mobile backend address
+## Configure the backend address in the app
 
-The Android backend address is passed to `AppDependencies` in `androidApp/src/main/kotlin/com/example/ogym_kmp/MainActivity.kt`.
+The base URL is currently hardcoded and passed to `initKoin`:
+
+| Platform | File |
+|---|---|
+| Android | `androidApp/src/main/kotlin/com/example/ogym_kmp/OGymApplication.kt` |
+| iOS | `shared/src/iosMain/kotlin/com/example/ogym_kmp/core/di/KoinIos.kt` |
 
 | Environment | Typical base URL |
 |---|---|
 | Android Emulator | `http://10.0.2.2:8080` |
 | Physical Android device | `http://<HOST_LOCAL_IP>:8080` |
 | iOS Simulator on the backend host | `http://127.0.0.1:8080` |
-| Physical iPhone | `http://<MAC_LOCAL_IP>:8080` |
+| Physical iPhone | `http://<HOST_LOCAL_IP>:8080` |
 
-For a physical device, the phone and the machine running Spring Boot should normally be on the same network. The firewall must allow traffic on port `8080`.
-
-Cleartext HTTP traffic is currently allowed in the Android manifest for local development only. A production application should use HTTPS.
+A physical device must be on the same network as the machine running the backend, and the firewall must allow port `8080`. Cleartext HTTP is allowed in the Android manifest for local development only; a production build will use HTTPS.
 
 ## Run Android
 
 1. Start the backend.
-2. Configure the base URL in `MainActivity.kt`.
-3. Open the project in Android Studio.
-4. Select an emulator or physical device.
-5. Run the Android configuration.
+2. Set the base URL in `OGymApplication.kt`.
+3. Open the project in Android Studio, select an emulator or a device, and run `androidApp`.
 
 Build the debug APK without running it:
 
@@ -199,15 +181,13 @@ Build the debug APK without running it:
 
 ## Run iOS
 
-Building the iOS application requires macOS and Xcode:
+Requires macOS and Xcode.
 
 1. Start the backend.
-2. Check the base URL in `shared/src/iosMain/kotlin/com/example/ogym_kmp/MainViewController.kt`.
-3. Open `iosApp/iosApp.xcodeproj` with Xcode.
-4. Select a simulator or physical device.
-5. Run the application.
+2. Check the base URL in `KoinIos.kt`.
+3. Open `iosApp/iosApp.xcodeproj` in Xcode, select a simulator or a device, and run.
 
-The UI remains shared in `commonMain` with Compose Multiplatform. SwiftUI acts as the entry point that hosts the Compose view controller.
+The UI is shared from `commonMain` with Compose Multiplatform; SwiftUI only hosts the Compose view controller.
 
 ## Build and test
 
@@ -217,19 +197,19 @@ Compile the shared Android code and the backend:
 ./gradlew :shared:compileAndroidMain :backend:compileKotlin
 ```
 
-Run backend tests:
-
-```bash
-./gradlew :backend:test
-```
-
-Run the shared module's Android tests:
+Run the shared tests on the JVM:
 
 ```bash
 ./gradlew :shared:testAndroidHostTest
 ```
 
-iOS tests require macOS:
+Run the backend tests:
+
+```bash
+./gradlew :backend:test
+```
+
+Run the iOS tests (macOS only):
 
 ```bash
 ./gradlew :shared:iosSimulatorArm64Test
@@ -237,10 +217,9 @@ iOS tests require macOS:
 
 ## Contribution principles
 
-- progress through small vertical slices;
-- understand one layer before adding another;
-- keep business responsibilities out of composables;
-- keep the domain independent from technical details;
-- prefer immutable state and unidirectional data flow;
-- add abstractions only when a concrete need appears;
-- accompany important changes with tests and documentation updates.
+- Progress through small vertical slices: one feature through all layers.
+- Keep business logic out of composables, and the domain independent from technical details.
+- Prefer immutable state and unidirectional data flow.
+- Add abstractions only when a concrete need appears.
+- One branch per change, small commits, [Conventional Commits](https://www.conventionalcommits.org/) for commit messages and PR titles.
+- Update tests and documentation together with the code they cover.
