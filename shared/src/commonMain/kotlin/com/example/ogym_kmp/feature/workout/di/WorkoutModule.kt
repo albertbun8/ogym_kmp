@@ -42,7 +42,7 @@ val workoutModule = module {
     factory { GetWorkoutTemplates(get()) }
     factory { GetWorkoutTemplate(get()) }
     factory { GetWorkoutSessions(get()) }
-    factory { StartEmptyWorkout(get()) }
+    factory { StartEmptyWorkout(get(), get()) }
     factory { GetActiveWorkout(get()) }
     factory { DiscardActiveWorkout(get()) }
     factory { AddExerciseToActiveWorkout(get()) }
