@@ -73,9 +73,13 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ogym_kmp.core.common.model.WeightUnit
+import com.example.ogym_kmp.core.common.model.convertWeight
 import com.example.ogym_kmp.feature.exercise.domain.model.Exercise
+import com.example.ogym_kmp.feature.workout.domain.model.PreviousSetPerformance
 import com.example.ogym_kmp.feature.workout.presentation.component.ExercisePickerDialog
 import com.example.ogym_kmp.feature.workout.presentation.component.SwipeToDelete
+import kotlin.math.round
 
 @Composable
 fun ActiveWorkoutScreen(
@@ -103,7 +107,8 @@ fun ActiveWorkoutScreen(
         exercise.sets.count { it.completed }
     }
     val totalSetCount = state.workout.exercises.sumOf { it.sets.size }
-    val workoutProgress = if (totalSetCount == 0) 0f else completedSetCount.toFloat() / totalSetCount
+    val workoutProgress =
+        if (totalSetCount == 0) 0f else completedSetCount.toFloat() / totalSetCount
     val reorderViewConfiguration = remember(defaultViewConfiguration) {
         object : ViewConfiguration by defaultViewConfiguration {
             override val longPressTimeoutMillis: Long = 1_000L
@@ -120,313 +125,347 @@ fun ActiveWorkoutScreen(
     }
 
     CompositionLocalProvider(LocalViewConfiguration provides reorderViewConfiguration) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = state.workout.name.uppercase(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    WorkoutChip(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(OGymTheme.colors.accent, CircleShape),
-                        )
-                        Text(
-                            text = state.elapsedWorkoutSeconds.toDurationLabel(),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    WorkoutChip(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Timer,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                        )
-                        Text(
-                            text = "Rest ${state.remainingRestSeconds.toTimerLabel()}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
-            Button(
-                onClick = { viewModel.onAction(ActiveWorkoutUiAction.Finish) },
-                enabled = !state.isFinishing,
-                modifier = Modifier.height(44.dp),
-            ) {
-                Text(
-                    text = if (state.isFinishing) "Finishing…" else "Finish",
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        }
-
-        state.finishError?.let { message ->
-            Text(
-                text = message,
-                modifier = Modifier.padding(horizontal = 18.dp),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
             ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = state.workout.name.uppercase(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        WorkoutChip(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(OGymTheme.colors.accent, CircleShape),
+                            )
+                            Text(
+                                text = state.elapsedWorkoutSeconds.toDurationLabel(),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        WorkoutChip(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Timer,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                text = "Rest ${state.remainingRestSeconds.toTimerLabel()}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+                Button(
+                    onClick = { viewModel.onAction(ActiveWorkoutUiAction.Finish) },
+                    enabled = !state.isFinishing,
+                    modifier = Modifier.height(44.dp),
+                ) {
+                    Text(
+                        text = if (state.isFinishing) "Finishing…" else "Finish",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+
+            state.finishError?.let { message ->
                 Text(
-                    text = "${state.workout.exercises.size} exercises",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "$completedSetCount / $totalSetCount sets",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
+                    text = message,
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
 
-        LinearProgressIndicator(
-            progress = { workoutProgress },
-            modifier = Modifier.fillMaxWidth().height(6.dp),
-            color = OGymTheme.colors.accent,
-            trackColor = MaterialTheme.colorScheme.outlineVariant,
-            gapSize = 0.dp,
-            drawStopIndicator = {},
-        )
-
-        if (state.workout.exercises.isEmpty()) {
-            Text(
-                text = "This workout is empty. Add your first exercise to begin tracking sets.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            state.workout.exercises.forEach { exercise ->
-                val dragging = draggedExerciseId == exercise.id
-                var menuExpanded by remember(exercise.id) { mutableStateOf(false) }
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .zIndex(if (dragging) 1f else 0f)
-                        .graphicsLayer {
-                            translationY = if (dragging) dragOffset else 0f
-                            scaleX = if (dragging) 1.02f else 1f
-                            scaleY = if (dragging) 1.02f else 1f
-                        },
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    border = if (dragging) BorderStroke(2.dp, OGymTheme.colors.accent) else null,
-                    tonalElevation = 0.dp,
-                    shadowElevation = if (dragging) 8.dp else 0.dp,
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Column(
-                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp),
-                    ) {
-                        Row(
+                    Text(
+                        text = "${state.workout.exercises.size} exercises",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "$completedSetCount / $totalSetCount sets",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+
+                LinearProgressIndicator(
+                    progress = { workoutProgress },
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                    color = OGymTheme.colors.accent,
+                    trackColor = MaterialTheme.colorScheme.outlineVariant,
+                    gapSize = 0.dp,
+                    drawStopIndicator = {},
+                )
+
+                if (state.workout.exercises.isEmpty()) {
+                    Text(
+                        text = "This workout is empty. Add your first exercise to begin tracking sets.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    state.workout.exercises.forEach { exercise ->
+                        val dragging = draggedExerciseId == exercise.id
+                        var menuExpanded by remember(exercise.id) { mutableStateOf(false) }
+                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .pointerInput(exercise.id, state.workout.exercises) {
-                                    detectDragGesturesAfterLongPress(
-                                        onDragStart = {
-                                            draggedExerciseId = exercise.id
-                                            dragOffset = 0f
-                                        },
-                                        onDragEnd = {
-                                            draggedExerciseId = null
-                                            dragOffset = 0f
-                                        },
-                                        onDragCancel = {
-                                            draggedExerciseId = null
-                                            dragOffset = 0f
-                                        },
-                                        onDrag = { change, amount ->
-                                            change.consume()
-                                            dragOffset += amount.y
-                                            val exercises = state.workout.exercises
-                                            val currentIndex = exercises.indexOfFirst { it.id == exercise.id }
-                                            val targetIndex = when {
-                                                dragOffset > reorderThreshold -> currentIndex + 1
-                                                dragOffset < -reorderThreshold -> currentIndex - 1
-                                                else -> -1
-                                            }
-                                            if (currentIndex >= 0 && targetIndex in exercises.indices) {
-                                                viewModel.onAction(
-                                                    ActiveWorkoutUiAction.MoveExercise(
-                                                        exercise.id,
-                                                        exercises[targetIndex].id,
-                                                    ),
-                                                )
-                                                dragOffset = 0f
-                                            }
-                                        },
-                                    )
-                                }
-                                .padding(bottom = 0.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                                .zIndex(if (dragging) 1f else 0f)
+                                .graphicsLayer {
+                                    translationY = if (dragging) dragOffset else 0f
+                                    scaleX = if (dragging) 1.02f else 1f
+                                    scaleY = if (dragging) 1.02f else 1f
+                                },
+                            shape = MaterialTheme.shapes.large,
+                            color = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            border = if (dragging) BorderStroke(
+                                2.dp,
+                                OGymTheme.colors.accent
+                            ) else null,
+                            tonalElevation = 0.dp,
+                            shadowElevation = if (dragging) 8.dp else 0.dp,
                         ) {
                             Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(0.dp),
+                                modifier = Modifier.padding(
+                                    start = 12.dp,
+                                    end = 12.dp,
+                                    top = 12.dp,
+                                    bottom = 6.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(5.dp),
                             ) {
-                                Text(
-                                    text = exercise.exerciseName.uppercase(),
-                                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp),
-                                    color = OGymTheme.colors.accent,
-                                )
-                                Text(
-                                    text = exercise.muscleGroups.joinToString { it.displayName() },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            if (dragging) {
-                                Text(
-                                    text = "Dragging",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = OGymTheme.colors.accent,
-                                )
-                            } else {
-                                Box {
-                                    IconButton(onClick = { menuExpanded = true }) {
-                                        Icon(
-                                            imageVector = Icons.Filled.MoreVert,
-                                            contentDescription = "Exercise options",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .pointerInput(exercise.id, state.workout.exercises) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = {
+                                                    draggedExerciseId = exercise.id
+                                                    dragOffset = 0f
+                                                },
+                                                onDragEnd = {
+                                                    draggedExerciseId = null
+                                                    dragOffset = 0f
+                                                },
+                                                onDragCancel = {
+                                                    draggedExerciseId = null
+                                                    dragOffset = 0f
+                                                },
+                                                onDrag = { change, amount ->
+                                                    change.consume()
+                                                    dragOffset += amount.y
+                                                    val exercises = state.workout.exercises
+                                                    val currentIndex =
+                                                        exercises.indexOfFirst { it.id == exercise.id }
+                                                    val targetIndex = when {
+                                                        dragOffset > reorderThreshold -> currentIndex + 1
+                                                        dragOffset < -reorderThreshold -> currentIndex - 1
+                                                        else -> -1
+                                                    }
+                                                    if (currentIndex >= 0 && targetIndex in exercises.indices) {
+                                                        viewModel.onAction(
+                                                            ActiveWorkoutUiAction.MoveExercise(
+                                                                exercise.id,
+                                                                exercises[targetIndex].id,
+                                                            ),
+                                                        )
+                                                        dragOffset = 0f
+                                                    }
+                                                },
+                                            )
+                                        }
+                                        .padding(bottom = 0.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                                    ) {
+                                        Text(
+                                            text = exercise.exerciseName.uppercase(),
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontSize = 22.sp
+                                            ),
+                                            color = OGymTheme.colors.accent,
+                                        )
+                                        Text(
+                                            text = exercise.muscleGroups.joinToString { it.displayName() },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
-                                    DropdownMenu(
-                                        expanded = menuExpanded,
-                                        onDismissRequest = { menuExpanded = false },
+                                    if (dragging) {
+                                        Text(
+                                            text = "Dragging",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = OGymTheme.colors.accent,
+                                        )
+                                    } else {
+                                        Box {
+                                            IconButton(onClick = { menuExpanded = true }) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.MoreVert,
+                                                    contentDescription = "Exercise options",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                            DropdownMenu(
+                                                expanded = menuExpanded,
+                                                onDismissRequest = { menuExpanded = false },
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = { Text("Remove exercise") },
+                                                    onClick = {
+                                                        menuExpanded = false
+                                                        viewModel.onAction(
+                                                            ActiveWorkoutUiAction.RemoveExercise(
+                                                                exercise.id
+                                                            ),
+                                                        )
+                                                    },
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                if (exercise.sets.isNotEmpty()) {
+                                    WorkoutSetHeader(
+                                        weightUnit = state.workout.preferredWeightUnit.name.lowercase(),
+                                    )
+                                }
+                                exercise.sets.forEachIndexed { setIndex, set ->
+                                    val input = state.setInputs[set.id] ?: SetInputUi(
+                                        weight = set.weight?.toEditableString().orEmpty(),
+                                        reps = set.reps?.toString().orEmpty(),
+                                    )
+                                    val canComplete = input.weight.toDoubleOrNull() != null &&
+                                            input.reps.toIntOrNull() != null
+                                    val previous = state.previousPerformances[exercise.exerciseId]
+                                        ?.firstOrNull { it.positionInExercise == set.positionInExercise }
+                                    SwipeToDelete(
+                                        itemKey = set.id,
+                                        onDelete = {
+                                            viewModel.onAction(ActiveWorkoutUiAction.RemoveSet(set.id))
+                                        },
                                     ) {
-                                        DropdownMenuItem(
-                                            text = { Text("Remove exercise") },
-                                            onClick = {
-                                                menuExpanded = false
+                                        WorkoutSetRow(
+                                            setNumber = setIndex + 1,
+                                            previous = previous?.toPreviousLabel(state.workout.preferredWeightUnit) ?: "—",                                            weight = input.weight,
+                                            reps = input.reps,
+                                            completed = set.completed,
+                                            canComplete = canComplete,
+                                            onWeightChange = {
                                                 viewModel.onAction(
-                                                    ActiveWorkoutUiAction.RemoveExercise(exercise.id),
+                                                    ActiveWorkoutUiAction.ChangeSetWeight(
+                                                        set.id,
+                                                        it
+                                                    )
+                                                )
+                                            },
+                                            onRepsChange = {
+                                                viewModel.onAction(
+                                                    ActiveWorkoutUiAction.ChangeSetReps(
+                                                        set.id,
+                                                        it
+                                                    )
+                                                )
+                                            },
+                                            onCompletionChange = {
+                                                viewModel.onAction(
+                                                    ActiveWorkoutUiAction.SetSetCompleted(
+                                                        set.id,
+                                                        it
+                                                    ),
                                                 )
                                             },
                                         )
                                     }
                                 }
-                            }
-                        }
-                        if (exercise.sets.isNotEmpty()) {
-                            WorkoutSetHeader(
-                                weightUnit = state.workout.preferredWeightUnit.name.lowercase(),
-                            )
-                        }
-                        exercise.sets.forEachIndexed { setIndex, set ->
-                            val input = state.setInputs[set.id] ?: SetInputUi(
-                                weight = set.weight?.toEditableString().orEmpty(),
-                                reps = set.reps?.toString().orEmpty(),
-                            )
-                            val canComplete = input.weight.toDoubleOrNull() != null &&
-                                input.reps.toIntOrNull() != null
-                            val previous = state.previousPerformances[exercise.exerciseId]
-                                ?.firstOrNull { it.positionInExercise == set.positionInExercise }
-                            SwipeToDelete(
-                                itemKey = set.id,
-                                onDelete = {
-                                    viewModel.onAction(ActiveWorkoutUiAction.RemoveSet(set.id))
-                                },
-                            ) {
-                                WorkoutSetRow(
-                                    setNumber = setIndex + 1,
-                                    previous = previous?.let {
-                                        "${it.weight.toEditableString()} ${it.weightUnit.name.lowercase()} × ${it.reps}"
-                                    } ?: "—",
-                                    weight = input.weight,
-                                    reps = input.reps,
-                                    completed = set.completed,
-                                    canComplete = canComplete,
-                                    onWeightChange = {
-                                        viewModel.onAction(ActiveWorkoutUiAction.ChangeSetWeight(set.id, it))
-                                    },
-                                    onRepsChange = {
-                                        viewModel.onAction(ActiveWorkoutUiAction.ChangeSetReps(set.id, it))
-                                    },
-                                    onCompletionChange = {
+                                TextButton(
+                                    onClick = {
                                         viewModel.onAction(
-                                            ActiveWorkoutUiAction.SetSetCompleted(set.id, it),
+                                            ActiveWorkoutUiAction.AddSet(
+                                                exercise.id
+                                            )
                                         )
                                     },
-                                )
+                                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                                    colors = ButtonDefaults.textButtonColors(contentColor = OGymTheme.colors.accent),
+                                ) {
+                                    AddSetButtonContent()
+                                }
                             }
-                        }
-                        TextButton(
-                            onClick = { viewModel.onAction(ActiveWorkoutUiAction.AddSet(exercise.id)) },
-                            modifier = Modifier.fillMaxWidth().height(44.dp),
-                            colors = ButtonDefaults.textButtonColors(contentColor = OGymTheme.colors.accent),
-                        ) {
-                            AddSetButtonContent()
                         }
                     }
                 }
-            }
-        }
 
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            OutlinedButton(
-                onClick = { viewModel.onAction(ActiveWorkoutUiAction.OpenExercisePicker) },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(8.dp))
-                Text("Add exercise", style = MaterialTheme.typography.labelLarge)
-            }
-            TextButton(
-                onClick = { viewModel.onAction(ActiveWorkoutUiAction.Discard) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) {
-                Text("Discard workout")
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = { viewModel.onAction(ActiveWorkoutUiAction.OpenExercisePicker) },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                    ) {
+                        Icon(
+                            Icons.Filled.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.size(8.dp))
+                        Text("Add exercise", style = MaterialTheme.typography.labelLarge)
+                    }
+                    TextButton(
+                        onClick = { viewModel.onAction(ActiveWorkoutUiAction.Discard) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Text("Discard workout")
+                    }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp + contentPadding.calculateBottomPadding()))
             }
         }
-        androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp + contentPadding.calculateBottomPadding()))
-        }
-    }
     }
 }
 
@@ -578,6 +617,7 @@ private fun WorkoutNumberField(
                 focused -> Modifier
                     .background(MaterialTheme.colorScheme.surface, fieldShape)
                     .border(2.dp, OGymTheme.colors.accent, fieldShape)
+
                 else -> Modifier
                     .background(MaterialTheme.colorScheme.surfaceContainerHighest, fieldShape)
                     .border(1.dp, MaterialTheme.colorScheme.outlineVariant, fieldShape)
@@ -602,7 +642,8 @@ private fun CompletionButton(
     onClick: () -> Unit,
 ) {
     val buttonShape = RoundedCornerShape(12.dp)
-    val uncheckedColor = if (enabled) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant
+    val uncheckedColor =
+        if (enabled) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outlineVariant
     Box(
         modifier = Modifier
             .size(44.dp)
@@ -683,6 +724,13 @@ private fun Enum<*>.displayName(): String =
 
 private fun Double.toEditableString(): String =
     if (this % 1.0 == 0.0) toInt().toString() else toString()
+
+private fun PreviousSetPerformance.toPreviousLabel(unit: WeightUnit): String {
+    val convertedWeight = convertWeight(weight, from = weightUnit, to = unit)
+    val roundedValue = round(convertedWeight * 10) / 10
+
+    return "${roundedValue.toEditableString()} ${unit.name.lowercase()} × $reps"
+}
 
 private fun Int.toTimerLabel(): String =
     "${this / 60}:${(this % 60).toString().padStart(2, '0')}"
