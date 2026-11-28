@@ -1,6 +1,7 @@
 package com.example.ogym_kmp.feature.workout.domain.usecase
 
 import com.example.ogym_kmp.core.common.model.WeightUnit
+import com.example.ogym_kmp.core.common.model.convertWeightRounded
 import com.example.ogym_kmp.core.preferences.WeightUnitPreferences
 import com.example.ogym_kmp.feature.exercise.domain.repository.ExerciseRepository
 import com.example.ogym_kmp.feature.workout.domain.model.ActiveWorkoutDraft
@@ -57,8 +58,12 @@ class StartWorkoutFromTemplate(
                                     id = Uuid.random(),
                                     positionInExercise = templateSet.positionInExercise,
                                     reps = templateSet.targetReps,
-                                    weight = templateSet.targetWeight,
-                                    weightUnit = templateSet.targetWeightUnit,
+                                    weight = convertWeightRounded(
+                                        weight = templateSet.targetWeight,
+                                        from = templateSet.targetWeightUnit,
+                                        to = preferredWeightUnit,
+                                    ),
+                                    weightUnit = preferredWeightUnit,
                                     completed = false,
                                 )
                             },

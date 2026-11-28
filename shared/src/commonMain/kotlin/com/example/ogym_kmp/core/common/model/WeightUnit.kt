@@ -1,5 +1,7 @@
 package com.example.ogym_kmp.core.common.model
 
+import kotlin.math.round
+
 enum class WeightUnit {
     LB,
     KG,
@@ -12,4 +14,10 @@ fun convertWeight(weight: Double, from: WeightUnit, to: WeightUnit): Double =
         from == to -> weight
         from == WeightUnit.LB -> weight * KG_PER_LB
         else -> weight / KG_PER_LB
+    }
+
+fun convertWeightRounded(weight: Double, from: WeightUnit, to: WeightUnit): Double =
+    when {
+        from == to -> weight
+        else -> round(convertWeight(weight, from, to) * 2) / 2
     }

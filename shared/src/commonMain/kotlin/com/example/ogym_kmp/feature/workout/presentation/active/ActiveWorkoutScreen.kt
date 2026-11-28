@@ -387,7 +387,8 @@ fun ActiveWorkoutScreen(
                                     ) {
                                         WorkoutSetRow(
                                             setNumber = setIndex + 1,
-                                            previous = previous?.toPreviousLabel(state.workout.preferredWeightUnit) ?: "—",                                            weight = input.weight,
+                                            previous = previous?.toPreviousLabel(state.workout.preferredWeightUnit)
+                                                ?: "—", weight = input.weight,
                                             reps = input.reps,
                                             completed = set.completed,
                                             canComplete = canComplete,
@@ -463,7 +464,7 @@ fun ActiveWorkoutScreen(
                         Text("Discard workout")
                     }
                 }
-                androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp + contentPadding.calculateBottomPadding()))
+                Spacer(Modifier.height(14.dp + contentPadding.calculateBottomPadding()))
             }
         }
     }
